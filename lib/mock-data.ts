@@ -23,9 +23,8 @@ export const MOCK_POSTS: Post[] = [
 ]
 export const MOCK_NEWS: NewsItem[] = [
   { id:'1', title:'Convocatoria para el Campeonato Sudamericano 2025', category:'Selección Chile', summary:'La Federación ha abierto el proceso de selección.', published_at:'2025-03-20', is_official:true },
-  { id:'2', title:'Resultados completos Open Valparaíso 2025', category:'Resultados', summary:'Felipe Díaz y Andrea Muñoz campeones en una final épica.', published_at:'2025-03-16', is_official:false },
-  { id:'3', title:'Actualización reglas de juego 2025 – versión WSRS', category:'Reglamento', summary:'La WSRS publicó cambios en las reglas. Resumen para Chile.', published_at:'2025-03-05', is_official:true },
-  { id:'4', title:'Fotos y videos del Open Concepción 2025', category:'Galería', summary:'Revive los mejores momentos del último torneo.', published_at:'2025-02-20', is_official:false },
+  { id:'2', title:'Resultados completos Open Valparaíso 2025', category:'Resultados', summary:'Felipe Díaz y Andrea Muñoz campeones.', published_at:'2025-03-16', is_official:false },
+  { id:'3', title:'Actualización reglas de juego 2025', category:'Reglamento', summary:'La WSRS publicó cambios en las reglas.', published_at:'2025-03-05', is_official:true },
 ]
 export const MOCK_ENCUENTROS: Encuentro[] = [
   { id:'1', title:'Entreno Libre – Providencia', location:'Plaza Baquedano', city:'Santiago', date:new Date().toISOString(), time:'18:00', organizer_id:'2', organizer:MOCK_PLAYERS[1], participants:[MOCK_PLAYERS[1],MOCK_PLAYERS[2],MOCK_PLAYERS[3]], max_participants:8, created_at:new Date().toISOString() },
