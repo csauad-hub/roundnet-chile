@@ -8,7 +8,7 @@ export default function Topbar({ title }: { title?: string }) {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="flex items-center justify-between px-5 py-3">
           <Link href="/" className="flex items-center gap-2.5">
-            <img src="/logo.png" alt="Roundnet Chile" width={32} height={32} className="object-contain" />
+            <Image src="/Logo Oficial Roundnet Chile-01.png" alt="Roundnet Chile" width={32} height={32} className="object-contain" />
             <div className="font-display font-extrabold text-sm leading-tight">
               {title ? <span className="text-slate-800">{title}</span> : <><span className="text-blue-600">Roundnet</span> <span className="text-red-500">Chile</span></>}
             </div>
