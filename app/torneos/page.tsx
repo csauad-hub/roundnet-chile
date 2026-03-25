@@ -1,14 +1,50 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
-import { MOCK_TOURNAMENTS, MOCK_PLAYERS } from '@/lib/mock-data'
+import { MOCK_PLAYERS } from '@/lib/mock-data'
 import { cn, formatDate, formatCLP, STATUS_LABELS, STATUS_STYLES, avatarColor, getInitials } from '@/lib/utils'
+
+type Tournament = {
+  id: string
+  name: string
+  location: string
+  city: string
+  date: string
+  status: string
+  registered_teams: number
+  max_teams: number
+  price_per_team: number
+  category: string
+  winner: string | null
+}
+
+const SUPABASE_URL = 'https://aqyhtzhomxwpcwbbqpap.supabase.co'
+const SUPABASE_KEY = 'sb_publishable_WD60P4YxbkG4jsY7Eyc_ZA_s_QODGQO'
+
 export default function TorneosPage() {
   const [tab, setTab] = useState<'torneos'|'ranking'>('torneos')
   const [filter, setFilter] = useState('all')
-  const tournaments = filter==='all' ? MOCK_TOURNAMENTS : MOCK_TOURNAMENTS.filter(t => t.status===filter)
+  const [tournaments, setTournaments] = useState<Tournament[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    setLoading(true)
+    const params = filter === 'all'
+      ? 'select=*&order=date.desc'
+      : `select=*&status=eq.${filter}&order=date.desc`
+    fetch(`${SUPABASE_URL}/rest/v1/tournaments?${params}`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    })
+      .then(r => r.json())
+      .then(data => { setTournaments(Array.isArray(data) ? data : []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [filter])
+
   return (<div className="flex flex-col min-h-screen animate-in"><Topbar title="Torneos" />
     <div className="flex bg-white border-b border-slate-200">
       {(['torneos','ranking'] as const).map(t => (<button key={t} onClick={() => setTab(t)} className={cn('tab-item flex-1 text-center',tab===t&&'active')}>{t==='torneos'?'Calendario':'Ranking Nacional'}</button>))}
@@ -21,7 +57,11 @@ export default function TorneosPage() {
           ))}
         </div>
         <div className="px-4 flex flex-col gap-3 pb-4">
-          {tournaments.map(t => (<Link key={t.id} href={'/torneos/'+t.id}><div className="card overflow-hidden hover:border-blue-300 hover:shadow-md transition-all">
+          {loading ? (
+            <div className="text-center py-12 text-slate-400 text-sm">Cargando torneos...</div>
+          ) : tournaments.length === 0 ? (
+            <div className="text-center py-12 text-slate-400 text-sm">No hay torneos disponibles</div>
+          ) : tournaments.map(t => (<Link key={t.id} href={'/torneos/'+t.id}><div className="card overflow-hidden hover:border-blue-300 hover:shadow-md transition-all">
             <div className="bg-gradient-to-br from-blue-50 to-slate-100 px-5 py-4 border-b border-slate-200">
               <span className={cn('badge',STATUS_STYLES[t.status])}>{STATUS_LABELS[t.status]}</span>
               <h3 className="font-display font-black text-lg text-blue-700 mt-2">{t.name}</h3>
@@ -35,7 +75,9 @@ export default function TorneosPage() {
                 <span>🏆 <strong className="text-slate-700">{t.category}</strong></span>
               </div>
               {t.winner && <p className="mt-2 text-xs">🥇 <strong>{t.winner}</strong></p>}
-              <div className={cn('mt-4 w-full text-center py-3 rounded-xl font-display font-bold text-sm',t.status==='open'?'bg-blue-600 text-white':'bg-slate-100 text-slate-400')}>{t.status==='open'?'Inscribirse →':t.status==='soon'?'Próximamente':'Ver resultados'}</div>
+              <div className={cn('mt-4 w-full text-center py-3 rounded-xl font-display font-bold text-sm',t.status==='open'?'bg-blue-600 text-white':'bg-slate-100 text-slate-400')}>
+                {t.status==='open'?'Inscribirse →':t.status==='soon'?'Próximamente':'Ver resultados'}
+              </div>
             </div>
           </div></Link>))}
         </div>
