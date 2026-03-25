@@ -29,6 +29,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth', request.url))
   }
 
+  // Protect /perfil route - must be logged in
+  if (path.startsWith('/perfil') && !user) {
+    return NextResponse.redirect(new URL('/auth?next=/perfil', request.url))
+  }
+
   // Protect admin routes
   if (path.startsWith('/admin')) {
     if (!user) {
@@ -48,5 +53,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/admin/:path*'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }
