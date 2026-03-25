@@ -1,48 +1,94 @@
-'use client'
-import { useState } from 'react'
-import { Plus, Heart, MessageCircle, Share2 } from 'lucide-react'
-import Topbar from '@/components/layout/Topbar'
-import BottomNav from '@/components/layout/BottomNav'
-import { MOCK_POSTS, MOCK_NEWS } from '@/lib/mock-data'
-import { cn, timeAgo, formatDate, CATEGORY_LABELS, CATEGORY_STYLES, avatarColor, getInitials } from '@/lib/utils'
-export default function ComunidadPage() {
-  const [tab, setTab] = useState<'foro'|'noticias'>('foro')
-  const [cat, setCat] = useState('all')
-  const [liked, setLiked] = useState<Record<string,boolean>>({})
-  const posts = cat==='all' ? MOCK_POSTS : MOCK_POSTS.filter(p => p.category===cat)
-  return (<div className="flex flex-col min-h-screen animate-in"><Topbar title="Comunidad" />
-    <div className="flex bg-white border-b border-slate-200">
-      {(['foro','noticias'] as const).map(t => (<button key={t} onClick={() => setTab(t)} className={cn('tab-item flex-1 text-center',tab===t&&'active')}>{t==='foro'?'Foro':'Noticias'}</button>))}
+import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
+import { Users, Trophy, Instagram, ExternalLink, Globe } from 'lucide-react'
+
+export default async function ComunidadPage() {
+  const supabase = createClient()
+
+  const [{ count: players }, { count: tournaments }] = await Promise.all([
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase.from('tournaments').select('*', { count: 'exact', head: true }),
+  ])
+
+  return (
+    <div className="min-h-screen px-4 py-10" style={{ background: '#0d0d1a' }}>
+      <div className="max-w-2xl mx-auto space-y-10">
+
+        {/* Hero */}
+        <div className="text-center py-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4" style={{ background: 'linear-gradient(135deg, #00E5FF22, #7B2FFF22)', border: '1px solid rgba(0,229,255,0.25)' }}>
+            <Users size={28} style={{ color: '#00E5FF' }} />
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Comunidad</h1>
+          <p className="text-base" style={{ color: 'rgba(255,255,255,0.5)' }}>
+            La comunidad de Roundnet Chile está creciendo.
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="rounded-2xl p-5 text-center border" style={{ background: 'rgba(0,229,255,0.05)', borderColor: 'rgba(0,229,255,0.15)' }}>
+            <p className="text-4xl font-bold mb-1" style={{ color: '#00E5FF' }}>{players ?? 0}</p>
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Jugadores registrados</p>
+          </div>
+          <div className="rounded-2xl p-5 text-center border" style={{ background: 'rgba(123,47,255,0.05)', borderColor: 'rgba(123,47,255,0.15)' }}>
+            <p className="text-4xl font-bold mb-1" style={{ color: '#7B2FFF' }}>{tournaments ?? 0}</p>
+            <p className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Torneos realizados</p>
+          </div>
+        </div>
+
+        {/* About */}
+        <div className="rounded-2xl p-6 border" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}>
+          <h2 className="text-lg font-semibold text-white mb-3">¿Qué es Roundnet?</h2>
+          <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            Roundnet (también conocido como Spikeball) es un deporte de raqueta que se juega 2 contra 2.
+            Los equipos se alternan golpeando una pelota hacia una red redonda. Si el equipo contrario
+            no puede devolver la pelota, el equipo atacante anota un punto.
+          </p>
+          <p className="text-sm leading-relaxed mt-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
+            En Chile, la comunidad sigue creciendo con torneos en todo el país.
+            ¡Únete y empieza a jugar!
+          </p>
+        </div>
+
+        {/* Links */}
+        <div>
+          <h2 className="text-xs font-semibold mb-4 uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.4)' }}>Síguenos</h2>
+          <div className="space-y-3">
+            <a
+              href="https://www.instagram.com/roundnetchile"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-4 px-4 py-4 rounded-xl border transition-all hover:border-pink-400/30"
+              style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(236,72,153,0.15)' }}>
+                <Instagram size={18} style={{ color: '#ec4899' }} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">Instagram</p>
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>@roundnetchile</p>
+              </div>
+              <ExternalLink size={14} className="ml-auto" style={{ color: 'rgba(255,255,255,0.3)' }} />
+            </a>
+
+            <Link
+              href="/torneos"
+              className="flex items-center gap-4 px-4 py-4 rounded-xl border transition-all hover:border-cyan-400/30"
+              style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,229,255,0.15)' }}>
+                <Trophy size={18} style={{ color: '#00E5FF' }} />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">Torneos</p>
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Ver calendario de torneos</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
+      </div>
     </div>
-    <main className="flex-1 pb-24 relative">
-      {tab==='foro' && (<>
-        <div className="flex gap-2 px-4 py-3 overflow-x-auto">
-          {[{v:'all',l:'Todo'},{v:'tecnica',l:'Técnica'},{v:'general',l:'General'},{v:'ayuda',l:'Ayuda'},{v:'humor',l:'Humor'}].map(c => (
-            <button key={c.v} onClick={() => setCat(c.v)} className={cn('flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold font-display border-2 transition-all',cat===c.v?'bg-blue-600 border-blue-600 text-white':'bg-white border-slate-200 text-slate-500')}>{c.l}</button>
-          ))}
-        </div>
-        <div className="px-4 flex flex-col gap-2.5 pb-4">
-          {posts.map(p => (<div key={p.id} className="card p-4">
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className={cn('avatar w-9 h-9 text-xs',avatarColor(p.author.full_name))}>{getInitials(p.author.full_name)}</div>
-              <div className="flex-1"><p className="font-semibold text-sm">{p.author.full_name}</p><p className="text-[11px] text-slate-400">{timeAgo(p.created_at)}</p></div>
-              <span className={cn('badge',CATEGORY_STYLES[p.category])}>{CATEGORY_LABELS[p.category]}</span>
-            </div>
-            <p className="text-sm text-slate-600 leading-relaxed">{p.content}</p>
-            <div className="flex gap-4 mt-3 pt-3 border-t border-slate-100">
-              <button onClick={() => setLiked(l => ({...l,[p.id]:!l[p.id]}))} className={cn('flex items-center gap-1.5 text-xs font-medium',liked[p.id]||p.user_has_liked?'text-red-500':'text-slate-400')}><Heart size={14} fill={liked[p.id]||p.user_has_liked?'currentColor':'none'} />{p.likes_count}</button>
-              <button className="flex items-center gap-1.5 text-xs font-medium text-slate-400"><MessageCircle size={14} />{p.comments_count}</button>
-              <button className="flex items-center gap-1.5 text-xs font-medium text-slate-400 ml-auto"><Share2 size={14} />Compartir</button>
-            </div>
-          </div>))}
-        </div>
-        <button className="fixed bottom-24 right-4 bg-blue-600 text-white rounded-full shadow-xl flex items-center gap-2 px-4 py-3 font-display font-bold text-sm z-30"><Plus size={16} />Publicar</button>
-      </>)}
-      {tab==='noticias' && (<div className="px-4 pt-4 flex flex-col gap-2.5">
-        {MOCK_NEWS.map(n => (<div key={n.id} className="card flex gap-3 px-4 py-3.5">
-          <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl bg-blue-50">{n.category==='Selección Chile'?'🌍':n.category==='Resultados'?'🏆':n.category==='Reglamento'?'📋':'📸'}</div>
-          <div><p className="text-[10px] font-bold uppercase tracking-wider text-blue-600">{n.category}</p><p className="text-sm font-semibold mt-0.5">{n.title}</p><p className="text-[11px] text-slate-400 mt-1">{formatDate(n.published_at)}{n.is_official?' · Oficial':''}</p></div>
-        </div>))}
-      </div>)}
-    </main><BottomNav /></div>)
+  )
 }
