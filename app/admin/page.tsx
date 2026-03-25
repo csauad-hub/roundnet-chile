@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Trophy, Users, Newspaper, TrendingUp, Plus, ArrowRight } from 'lucide-react'
 
 export default async function AdminDashboardPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const [{ count: tournamentsCount }, { count: usersCount }] = await Promise.all([
     supabase.from('tournaments').select('*', { count: 'exact', head: true }),
