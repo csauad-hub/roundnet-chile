@@ -1,8 +1,8 @@
 'use client'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Bell, LogIn, ShieldCheck } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Bell, LogIn, ShieldCheck, Plus, Trophy, Newspaper } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
@@ -10,7 +10,9 @@ export default function Topbar({ title }: { title?: string }) {
   const [user, setUser] = useState<User | null>(null)
   const [initials, setInitials] = useState('?')
   const [isAdmin, setIsAdmin] = useState(false)
+  const [showCreateMenu, setShowCreateMenu] = useState(false)
   const supabase = createClient()
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     async function loadUser() {
@@ -32,6 +34,16 @@ export default function Topbar({ title }: { title?: string }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setShowCreateMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
   return (
     <>
       <div className="top-stripe" />
@@ -45,9 +57,38 @@ export default function Topbar({ title }: { title?: string }) {
           </Link>
           <div className="flex items-center gap-3">
             {isAdmin && (
-              <Link href="/admin" className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
-                <ShieldCheck size={13} /> Admin
-              </Link>
+              <>
+                <Link href="/admin" className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+                  <ShieldCheck size={13} /> Admin
+                </Link>
+                <div className="relative" ref={menuRef}>
+                  <button
+                    onClick={() => setShowCreateMenu(!showCreateMenu)}
+                    className="flex items-center gap-1 text-xs font-bold text-white bg-blue-600 px-2.5 py-1.5 rounded-lg hover:bg-blue-700 active:scale-95 transition-all"
+                  >
+                    <Plus size={13} /> Crear
+                  </button>
+                  {showCreateMenu && (
+                    <div className="absolute right-0 top-9 bg-white border border-slate-200 rounded-xl shadow-xl py-1.5 min-w-[170px] z-50">
+                      <p className="px-4 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wide">Crear nuevo</p>
+                      <Link
+                        href="/admin/torneos/nuevo"
+                        onClick={() => setShowCreateMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 font-medium"
+                      >
+                        <Trophy size={15} className="text-blue-500" /> Torneo
+                      </Link>
+                      <Link
+                        href="/admin/noticias/nueva"
+                        onClick={() => setShowCreateMenu(false)}
+                        className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 font-medium"
+                      >
+                        <Newspaper size={15} className="text-blue-500" /> Noticia
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
             <button className="relative">
               <Bell size={22} className="text-slate-500" strokeWidth={1.8} />
