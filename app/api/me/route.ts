@@ -11,7 +11,7 @@ export async function GET() {
     const projectRef = supabaseUrl.match(/https:\/\/([^.]+)/)?.[1]
     if (!projectRef) return NextResponse.json({ role: 'user' })
 
-    // Reassemble chunked auth token cookie
+    // Reassemble chunked auth token cookie (URL-encoded JSON format)
     const baseName = `sb-${projectRef}-auth-token`
     let tokenValue = cookieStore.get(baseName)?.value
     if (!tokenValue) {
@@ -26,18 +26,15 @@ export async function GET() {
 
     if (!tokenValue) return NextResponse.json({ role: 'guest' })
 
-    // Decode base64 session to extract access_token
+    // Decode URL-encoded JSON to extract access_token
     let accessToken: string | undefined
     try {
-      const decoded = JSON.parse(
-        Buffer.from(tokenValue, 'base64').toString('utf-8')
-      )
+      const decoded = JSON.parse(decodeURIComponent(tokenValue))
       accessToken = decoded.access_token
     } catch {
+      // fallback: try raw JSON (not URL-encoded)
       try {
-        const decoded = JSON.parse(
-          Buffer.from(tokenValue, 'base64url').toString('utf-8')
-        )
+        const decoded = JSON.parse(tokenValue)
         accessToken = decoded.access_token
       } catch {}
     }
