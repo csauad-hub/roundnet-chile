@@ -1,23 +1,31 @@
-import { createClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 
+function decodeJWTPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const payload = parts[1]
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '=='.slice(0, (4 - base64.length % 4) % 4)
+    const decoded = atob(padded)
+    return JSON.parse(decoded)
+  } catch {
+    return null
+  }
+}
+
 export async function middleware(request: NextRequest) {
-  // Skip middleware for OAuth callback
   if (request.nextUrl.pathname.startsWith('/auth/callback')) {
     return NextResponse.next()
   }
 
-  const supabaseResponse = NextResponse.next({ request })
   const path = request.nextUrl.pathname
-
-  // Only protect /admin and /perfil routes
   const isAdminPath = path.startsWith('/admin')
   const isPerfilPath = path.startsWith('/perfil')
   if (!isAdminPath && !isPerfilPath) {
-    return supabaseResponse
+    return NextResponse.next({ request })
   }
 
-  // Read auth token from chunked URL-encoded cookies
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const projectRef = supabaseUrl.match(/https:\/\/([^.]+)/)?.[1]
   let tokenValue: string | undefined
@@ -36,7 +44,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Decode URL-encoded JSON to get access token
   let accessToken: string | undefined
   if (tokenValue) {
     try {
@@ -46,35 +53,24 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // No token — redirect to login
   if (!accessToken) {
     const next = isPerfilPath ? '/auth?next=/perfil' : '/auth?next=/admin'
     return NextResponse.redirect(new URL(next, request.url))
   }
 
-  // Verify token with admin client (bypasses RLS)
-  const admin = createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-  const { data: { user } } = await admin.auth.getUser(accessToken)
-
-  if (!user) {
+  const payload = decodeJWTPayload(accessToken)
+  if (!payload) {
     const next = isPerfilPath ? '/auth?next=/perfil' : '/auth?next=/admin'
     return NextResponse.redirect(new URL(next, request.url))
   }
 
-  // For admin routes, verify role in profiles table
-  if (isAdminPath) {
-    const { data: profile } = await admin
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (profile?.role !== 'admin') {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
+  const exp = payload.exp as number | undefined
+  if (exp && exp < Date.now() / 1000) {
+    const next = isPerfilPath ? '/auth?next=/perfil' : '/auth?next=/admin'
+    return NextResponse.redirect(new URL(next, request.url))
   }
 
-  return supabaseResponse
+  return NextResponse.next({ request })
 }
 
 export const config = {
