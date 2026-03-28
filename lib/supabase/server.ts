@@ -1,3 +1,4 @@
+// Server-side Supabase client - reads chunked URL-encoded auth cookies
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
