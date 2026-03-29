@@ -5,9 +5,14 @@ import { Trophy, Users, Newspaper, TrendingUp, Plus, ArrowRight } from 'lucide-r
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
 
-  const [{ count: tournamentsCount }, { count: usersCount }] = await Promise.all([
+  const [
+    { count: tournamentsCount },
+    { count: usersCount },
+    { count: newsCount },
+  ] = await Promise.all([
     supabase.from('tournaments').select('*', { count: 'exact', head: true }),
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase.from('news').select('*', { count: 'exact', head: true }),
   ])
 
   const { data: recentTournaments } = await supabase
@@ -31,7 +36,7 @@ export default async function AdminDashboardPage() {
   }
 
   return (
-    <div className="py-6 space-y-8">
+    <div className="py-2 space-y-8">
       {/* Page title */}
       <div>
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
@@ -41,7 +46,7 @@ export default async function AdminDashboardPage() {
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl p-5 border" style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-2 mb-3">
             <Trophy size={16} style={{ color: '#00E5FF' }} />
@@ -49,7 +54,6 @@ export default async function AdminDashboardPage() {
           </div>
           <p className="text-3xl font-bold text-white">{tournamentsCount ?? 0}</p>
         </div>
-
         <div className="rounded-xl p-5 border" style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-2 mb-3">
             <Users size={16} style={{ color: '#7B2FFF' }} />
@@ -57,13 +61,12 @@ export default async function AdminDashboardPage() {
           </div>
           <p className="text-3xl font-bold text-white">{usersCount ?? 0}</p>
         </div>
-
         <div className="rounded-xl p-5 border" style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-2 mb-3">
             <Newspaper size={16} style={{ color: '#f59e0b' }} />
             <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>Noticias</span>
           </div>
-          <p className="text-3xl font-bold text-white">—</p>
+          <p className="text-3xl font-bold text-white">{newsCount ?? 0}</p>
         </div>
       </div>
 
@@ -80,14 +83,13 @@ export default async function AdminDashboardPage() {
               <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Crear evento</p>
             </div>
           </Link>
-
-          <Link href="/admin/torneos" className="flex items-center gap-3 rounded-xl p-4 border transition-all hover:border-purple-400/30" style={{ background: 'rgba(123,47,255,0.05)', borderColor: 'rgba(123,47,255,0.15)' }}>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(123,47,255,0.15)' }}>
-              <TrendingUp size={16} style={{ color: '#7B2FFF' }} />
+          <Link href="/admin/noticias/nuevo" className="flex items-center gap-3 rounded-xl p-4 border transition-all hover:border-amber-400/30" style={{ background: 'rgba(245,158,11,0.05)', borderColor: 'rgba(245,158,11,0.15)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(245,158,11,0.15)' }}>
+              <Newspaper size={16} style={{ color: '#f59e0b' }} />
             </div>
             <div>
-              <p className="text-sm font-medium text-white">Ver Torneos</p>
-              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Gestionar</p>
+              <p className="text-sm font-medium text-white">Nueva Noticia</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>Publicar</p>
             </div>
           </Link>
         </div>
@@ -116,7 +118,13 @@ export default async function AdminDashboardPage() {
                     {t.city} · {t.date ? new Date(t.date).toLocaleDateString('es-CL') : '—'}
                   </p>
                 </div>
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ color: statusColor[t.status] || 'rgba(255,255,255,0.4)', background: `${statusColor[t.status] || 'rgba(255,255,255,0.4)'}20` }}>
+                <span
+                  className="text-xs font-medium px-2 py-0.5 rounded-full"
+                  style={{
+                    color: statusColor[t.status] || 'rgba(255,255,255,0.4)',
+                    background: `${statusColor[t.status] || 'rgba(255,255,255,0.4)'}20`,
+                  }}
+                >
                   {statusLabel[t.status] || t.status}
                 </span>
               </Link>
