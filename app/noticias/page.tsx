@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
 import { Newspaper, ChevronRight } from 'lucide-react'
@@ -17,7 +19,9 @@ type News = {
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return ''
   return new Date(dateStr).toLocaleDateString('es-CL', {
-    day: 'numeric', month: 'long', year: 'numeric',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
   })
 }
 
@@ -79,7 +83,6 @@ export default async function NoticiasPage() {
                   </div>
                 </Link>
               )}
-
               {/* Lista */}
               {rest.map(n => (
                 <Link key={n.id} href={`/noticias/${n.id}`} className="block group">
