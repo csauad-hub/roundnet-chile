@@ -6,6 +6,7 @@ import BottomNav from '@/components/layout/BottomNav'
 
 export default async function ComunidadPage() {
   const supabase = await createClient()
+
   const [{ count: players }, { count: tournaments }] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('tournaments').select('*', { count: 'exact', head: true }),
@@ -15,7 +16,6 @@ export default async function ComunidadPage() {
     <div className="flex flex-col min-h-screen animate-in">
       <Topbar title="Comunidad" />
       <main className="flex-1 pb-24 bg-slate-50">
-
         {/* Stats */}
         <section className="px-4 mt-4">
           <div className="grid grid-cols-2 gap-3">
@@ -36,8 +36,8 @@ export default async function ComunidadPage() {
             <h2 className="font-display font-black text-base text-slate-800 mb-3">¿Qué es Roundnet?</h2>
             <p className="text-sm leading-relaxed text-slate-600">
               Roundnet (también conocido como Spikeball) es un deporte de raqueta que se juega 2 contra 2.
-              Los equipos se alternan golpeando una pelota hacia una red redonda. Si el equipo contrario no
-              puede devolver la pelota, el equipo atacante anota un punto.
+              Los equipos se alternan golpeando una pelota hacia una red redonda. Si el equipo contrario
+              no puede devolver la pelota, el equipo atacante anota un punto.
             </p>
             <p className="text-sm leading-relaxed text-slate-600 mt-3">
               En Chile, la comunidad sigue creciendo con torneos en todo el país. ¡Únete y empieza a jugar!
@@ -50,7 +50,7 @@ export default async function ComunidadPage() {
           <h2 className="section-title mb-2.5">Síguenos</h2>
           <div className="flex flex-col gap-2">
             <a
-              href="https://www.instagram.com/roundnetchile"
+              href="https://www.instagram.com/roundnet.chile"
               target="_blank"
               rel="noopener noreferrer"
               className="card flex items-center gap-4 px-4 py-4"
@@ -60,11 +60,10 @@ export default async function ComunidadPage() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-slate-800">Instagram</p>
-                <p className="text-xs text-slate-400">@roundnetchile</p>
+                <p className="text-xs text-slate-400">@roundnet.chile</p>
               </div>
               <ExternalLink size={14} className="text-slate-300" />
             </a>
-
             <Link
               href="/torneos"
               className="card flex items-center gap-4 px-4 py-4"
@@ -79,7 +78,6 @@ export default async function ComunidadPage() {
             </Link>
           </div>
         </section>
-
       </main>
       <BottomNav />
     </div>
