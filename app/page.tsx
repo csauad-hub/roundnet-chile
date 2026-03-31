@@ -10,42 +10,77 @@ import { createClient } from '@supabase/supabase-js'
 // Update this URL with the actual Google Drive ranking sheet
 const RANKING_URL = 'https://drive.google.com'
 
-const PROXIMO_TORNEO = {
-  name: '1° Fecha Nacional La Serena 2026',
-  location: 'Complejo Deportivo Los Llanos',
-  city: 'La Serena',
-  date: '28 de Marzo 2026',
-  fwango_url: 'https://fwango.io/aukanes2026',
-}
-
 export default async function HomePage() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const { data: newsData } = await supabase
-    .from('news')
-    .select('id, title, description, image_url, published_at, created_at, category')
-    .order('created_at', { ascending: false })
-    .limit(3)
+  const [{ data: newsData }, { data: torneoData }] = await Promise.all([
+    supabase
+      .from('news')
+      .select('id, title, description, image_url, published_at, created_at, category')
+      .order('created_at', { ascending: false })
+      .limit(3),
+    supabase
+      .from('tournaments')
+      .select('id, name, date, city, location, fwango_url, status')
+      .in('status', ['upcoming', 'ongoing'])
+      .order('date', { ascending: true })
+      .limit(1),
+  ])
 
   const news = newsData ?? []
+  const torneo = torneoData?.[0] ?? null
 
   return (
     <div className="flex flex-col min-h-screen animate-in">
       <Topbar />
       <main className="flex-1 pb-24">
+
         {/* Próximo Torneo */}
-        <div className="mx-4 mt-4 bg-gradient-to-br from-blue-600 to-blue-900 rounded-2xl p-6 relative overflow-hidden shadow-lg">
-          <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/5" />
-          <div className="absolute bottom-0 left-0 right-0 h-1 opacity-40" style={{ background: 'linear-gradient(90deg,#C8102E 50%,white 50%)' }} />
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-widest uppercase bg-white/15 text-white/90 px-3 py-1.5 rounded-full mb-3">🏆 Próximo Torneo</span>
-          <h1 className="font-display font-black text-3xl text-white leading-tight">{PROXIMO_TORNEO.name}</h1>
-          <p className="text-sm text-white/70 mt-2">{PROXIMO_TORNEO.location} · {PROXIMO_TORNEO.city}</p>
-          <p className="text-xs text-white/50 mt-1">{PROXIMO_TORNEO.date}</p>
-          <a href={PROXIMO_TORNEO.fwango_url} target="_blank" rel="noopener noreferrer" className="inline-block mt-4 bg-white text-blue-700 font-display font-bold text-xs px-5 py-2.5 rounded-full shadow-md">Ver detalles →</a>
-        </div>
+        {torneo ? (
+          <div className="mx-4 mt-4 bg-gradient-to-br from-blue-600 to-blue-900 rounded-2xl p-6 relative overflow-hidden shadow-lg">
+            <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/5" />
+            <div className="absolute bottom-0 left-0 right-0 h-1 opacity-40" style={{ background: 'linear-gradient(90deg,#C8102E 50%,white 50%)' }} />
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-widest uppercase bg-white/15 text-white/90 px-3 py-1.5 rounded-full mb-3">
+              {torneo.status === 'ongoing' ? '🔴 En curso' : '🏆 Próximo Torneo'}
+            </span>
+            <h1 className="font-display font-black text-3xl text-white leading-tight">{torneo.name}</h1>
+            {(torneo.location || torneo.city) && (
+              <p className="text-sm text-white/70 mt-2">
+                {[torneo.location, torneo.city].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            {torneo.date && (
+              <p className="text-xs text-white/50 mt-1">
+                {new Date(torneo.date).toLocaleDateString('es-CL', {
+                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                })}
+              </p>
+            )}
+            {torneo.fwango_url && (
+              <a
+                href={torneo.fwango_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-4 bg-white text-blue-700 font-display font-bold text-xs px-5 py-2.5 rounded-full shadow-md"
+              >
+                Ver detalles →
+              </a>
+            )}
+          </div>
+        ) : (
+          <div className="mx-4 mt-4 bg-gradient-to-br from-slate-600 to-slate-800 rounded-2xl p-6 relative overflow-hidden shadow-lg">
+            <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-white/5" />
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-widest uppercase bg-white/15 text-white/90 px-3 py-1.5 rounded-full mb-3">🏆 Torneos</span>
+            <h1 className="font-display font-black text-2xl text-white leading-tight">No hay torneos próximos</h1>
+            <p className="text-sm text-white/60 mt-2">Pronto se anunciarán nuevas fechas. ¡Mantente atento!</p>
+            <Link href="/torneos" className="inline-block mt-4 bg-white text-slate-700 font-display font-bold text-xs px-5 py-2.5 rounded-full shadow-md">
+              Ver historial →
+            </Link>
+          </div>
+        )}
 
         {/* Últimas Noticias */}
         <div className="mt-5">
@@ -98,6 +133,7 @@ export default async function HomePage() {
             <ExternalLink size={16} className="text-slate-300 flex-shrink-0" />
           </a>
         </div>
+
       </main>
       <BottomNav />
     </div>
