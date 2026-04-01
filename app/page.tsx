@@ -1,14 +1,11 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { ChevronRight, Newspaper, ExternalLink, Trophy } from 'lucide-react'
+import { ChevronRight, Newspaper } from 'lucide-react'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
 import { formatDate } from '@/lib/utils'
 import { createClient } from '@supabase/supabase-js'
-
-// Update this URL with the actual Google Drive ranking sheet
-const RANKING_URL = 'https://drive.google.com'
 
 export default async function HomePage() {
   const supabase = createClient(
@@ -16,7 +13,7 @@ export default async function HomePage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 
-  const [{ data: newsData }, { data: torneoData }] = await Promise.all([
+  const [{ data: newsData }, { data: torneoData }, { data: rankingVarones }, { data: rankingDamas }] = await Promise.all([
     supabase
       .from('news')
       .select('id, title, description, image_url, published_at, created_at, category')
@@ -28,16 +25,34 @@ export default async function HomePage() {
       .in('status', ['upcoming', 'ongoing'])
       .order('date', { ascending: true })
       .limit(1),
+    supabase
+      .from('ranking')
+      .select('id, position, name, points')
+      .eq('season', 2025)
+      .eq('category', 'Varones')
+      .order('position', { ascending: true })
+      .limit(3),
+    supabase
+      .from('ranking')
+      .select('id, position, name, points')
+      .eq('season', 2025)
+      .eq('category', 'Damas')
+      .order('position', { ascending: true })
+      .limit(3),
   ])
 
   const news = newsData ?? []
   const torneo = torneoData?.[0] ?? null
+  const varones = rankingVarones ?? []
+  const damas = rankingDamas ?? []
+
+  const medal = (pos: number) =>
+    pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : String(pos)
 
   return (
     <div className="flex flex-col min-h-screen animate-in">
       <Topbar />
       <main className="flex-1 pb-24">
-
         {/* Próximo Torneo */}
         {torneo ? (
           <div className="mx-4 mt-4 bg-gradient-to-br from-blue-600 to-blue-900 rounded-2xl p-6 relative overflow-hidden shadow-lg">
@@ -54,18 +69,12 @@ export default async function HomePage() {
             )}
             {torneo.date && (
               <p className="text-xs text-white/50 mt-1">
-                {new Date(torneo.date).toLocaleDateString('es-CL', {
-                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                })}
+                {new Date(torneo.date).toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             )}
             {torneo.fwango_url && (
-              <a
-                href={torneo.fwango_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-4 bg-white text-blue-700 font-display font-bold text-xs px-5 py-2.5 rounded-full shadow-md"
-              >
+              <a href={torneo.fwango_url} target="_blank" rel="noopener noreferrer"
+                className="inline-block mt-4 bg-white text-blue-700 font-display font-bold text-xs px-5 py-2.5 rounded-full shadow-md">
                 Ver detalles →
               </a>
             )}
@@ -116,24 +125,50 @@ export default async function HomePage() {
 
         {/* Ranking */}
         <div className="mt-5 px-4">
-          <h2 className="section-title mb-2.5">Ranking</h2>
-          <a
-            href={RANKING_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="card flex items-center gap-4 px-4 py-4"
-          >
-            <div className="w-12 h-12 rounded-xl bg-yellow-50 flex items-center justify-center flex-shrink-0 text-2xl">
-              🏆
+          <div className="flex items-center justify-between mb-2.5">
+            <h2 className="section-title">Ranking 2025</h2>
+            <Link href="/ranking" className="text-xs font-semibold text-blue-600 flex items-center gap-0.5">Ver todo <ChevronRight size={14} /></Link>
+          </div>
+          <div className="card overflow-hidden">
+            <div className="px-4 pt-3 pb-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-2">Varones</p>
+              {varones.length === 0 ? (
+                <p className="text-xs text-slate-400 py-1">Sin datos</p>
+              ) : (
+                varones.map((p, i) => (
+                  <div key={p.id} className={`flex items-center py-2 ${i < varones.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                    <span className="w-7 text-base">{medal(p.position)}</span>
+                    <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{p.name}</span>
+                    <span className="text-sm font-bold text-blue-600">
+                      {Number(p.points) % 1 === 0
+                        ? Number(p.points).toLocaleString('es-CL')
+                        : Number(p.points).toFixed(1)}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-slate-800">Ranking Nacional</p>
-              <p className="text-xs text-slate-400 mt-0.5">El ranking se actualiza externamente. Toca para ver la tabla completa.</p>
+            <div className="border-t border-slate-100 mx-4" />
+            <div className="px-4 pt-3 pb-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-pink-500 mb-2">Damas</p>
+              {damas.length === 0 ? (
+                <p className="text-xs text-slate-400 py-1">Sin datos</p>
+              ) : (
+                damas.map((p, i) => (
+                  <div key={p.id} className={`flex items-center py-2 ${i < damas.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                    <span className="w-7 text-base">{medal(p.position)}</span>
+                    <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{p.name}</span>
+                    <span className="text-sm font-bold text-pink-500">
+                      {Number(p.points) % 1 === 0
+                        ? Number(p.points).toLocaleString('es-CL')
+                        : Number(p.points).toFixed(1)}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
-            <ExternalLink size={16} className="text-slate-300 flex-shrink-0" />
-          </a>
+          </div>
         </div>
-
       </main>
       <BottomNav />
     </div>
