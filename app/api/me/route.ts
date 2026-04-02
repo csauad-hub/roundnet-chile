@@ -1,3 +1,4 @@
+import { createServerClient } from '@supabase/ssr'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -6,49 +7,32 @@ export async function GET() {
   try {
     const cookieStore = await cookies()
 
-    // Extract project ref from Supabase URL
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const projectRef = supabaseUrl.match(/https:\/\/([^.]+)/)?.[1]
-    if (!projectRef) return NextResponse.json({ role: 'user' })
-
-    // Reassemble chunked auth token cookie (URL-encoded JSON format)
-    const baseName = `sb-${projectRef}-auth-token`
-    let tokenValue = cookieStore.get(baseName)?.value
-    if (!tokenValue) {
-      const chunks: string[] = []
-      for (let i = 0; i < 10; i++) {
-        const chunk = cookieStore.get(`${baseName}.${i}`)?.value
-        if (!chunk) break
-        chunks.push(chunk)
+    // Use @supabase/ssr to read the session (handles v0.6+ cookie format)
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll() },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              )
+            } catch { /* read-only context — safe to ignore */ }
+          },
+        },
       }
-      if (chunks.length > 0) tokenValue = chunks.join('')
-    }
-
-    if (!tokenValue) return NextResponse.json({ role: 'guest' })
-
-    // Decode URL-encoded JSON to extract access_token
-    let accessToken: string | undefined
-    try {
-      const decoded = JSON.parse(decodeURIComponent(tokenValue))
-      accessToken = decoded.access_token
-    } catch {
-      // fallback: try raw JSON (not URL-encoded)
-      try {
-        const decoded = JSON.parse(tokenValue)
-        accessToken = decoded.access_token
-      } catch {}
-    }
-
-    if (!accessToken) return NextResponse.json({ role: 'guest' })
-
-    // Use admin client to verify token and fetch profile (bypasses RLS)
-    const admin = createAdminClient(
-      supabaseUrl,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
     )
 
-    const { data: { user } } = await admin.auth.getUser(accessToken)
+    const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ role: 'guest' })
+
+    // Admin client bypasses RLS to fetch the profile role
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
     const { data: profile } = await admin
       .from('profiles')
