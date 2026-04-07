@@ -14,7 +14,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (projectRef) {
     const baseName = `sb-${projectRef}-auth-token`
 
-    // Try single cookie first, then chunked
     let tokenValue = cookieStore.get(baseName)?.value
     if (!tokenValue) {
       const chunks: string[] = []
@@ -28,7 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
     if (tokenValue) {
       try {
-        // Handle base64- prefix used by @supabase/ssr v0.5+
+        // Fix: handle base64- prefix used by @supabase/ssr v0.5+
         let decoded = decodeURIComponent(tokenValue)
         if (decoded.startsWith('base64-')) {
           decoded = atob(decoded.slice(7))
@@ -37,9 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       } catch {
         try {
           let val = tokenValue
-          if (val.startsWith('base64-')) {
-            val = atob(val.slice(7))
-          }
+          if (val.startsWith('base64-')) val = atob(val.slice(7))
           accessToken = JSON.parse(val).access_token
         } catch {}
       }
@@ -64,16 +61,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', zIndex: 100 }} className="bg-gray-950 flex">
-      {/* Sidebar */}
       <aside className="w-52 bg-gray-900 border-r border-gray-800 flex flex-col shrink-0 h-full">
-        {/* Logo */}
         <div className="p-4 border-b border-gray-800 flex items-center gap-2.5">
           <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center shrink-0">
             <span className="text-white font-bold text-sm">R</span>
           </div>
           <span className="text-white font-semibold text-sm">Panel Admin</span>
         </div>
-        {/* Nav */}
         <nav className="flex-1 p-3 space-y-0.5">
           <Link href="/admin" className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm transition-colors">
             <LayoutDashboard className="w-4 h-4 shrink-0" /> Dashboard
@@ -88,7 +82,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Newspaper className="w-4 h-4 shrink-0" /> Noticias
           </Link>
         </nav>
-        {/* Bottom */}
         <div className="p-3 border-t border-gray-800 space-y-1">
           <Link href="/" className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-cyan-400 hover:text-cyan-300 hover:bg-cyan-400/5 text-sm transition-colors border border-cyan-400/20 hover:border-cyan-300/40">
             <Home className="w-4 h-4 shrink-0" /> Ver App
@@ -106,7 +99,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </form>
         </div>
       </aside>
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto p-6 min-w-0">
         {children}
       </main>
