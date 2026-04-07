@@ -2,7 +2,6 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Always pass through the OAuth callback route
   if (request.nextUrl.pathname.startsWith('/auth/callback')) {
     return NextResponse.next()
   }
@@ -11,12 +10,10 @@ export async function middleware(request: NextRequest) {
   const isAdminPath = path.startsWith('/admin')
   const isPerfilPath = path.startsWith('/perfil')
 
-  // Only protect /admin and /perfil routes
   if (!isAdminPath && !isPerfilPath) {
     return NextResponse.next({ request })
   }
 
-  // Use @supabase/ssr to read the session properly (handles v0.6+ cookie format)
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -38,9 +35,10 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Fix: use getSession() instead of getUser() — reads JWT from cookie, no network call
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user) {
+  if (!session) {
     const next = isPerfilPath ? '/auth?next=/perfil' : '/auth?next=/admin'
     return NextResponse.redirect(new URL(next, request.url))
   }
