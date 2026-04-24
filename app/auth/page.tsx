@@ -2,6 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { Mail, Lock, ArrowRight } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -62,7 +63,7 @@ function LoginForm() {
 
   return (
     <div className="relative flex-1 flex flex-col items-center justify-center px-6 py-12">
-      <div className="font-display font-black text-4xl text-blue-600 mb-2">RN<span className="text-red-500">CL</span></div>
+      <Image src="/logo.svg" alt="Roundnet Chile" width={80} height={80} className="object-contain mb-2" />
       <h1 className="font-display font-black text-2xl text-blue-600">Roundnet <span className="text-red-500">Chile</span></h1>
       <p className="text-sm text-slate-500 mt-1 mb-8">La comunidad nacional</p>
 
