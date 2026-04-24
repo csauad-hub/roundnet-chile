@@ -6,6 +6,7 @@
 -- ── profiles ────────────────────────────────────────────────
 create table if not exists public.profiles (
   id                   uuid primary key references auth.users(id) on delete cascade,
+  username             text,
   full_name            text,
   avatar_url           text,
   city                 text,
