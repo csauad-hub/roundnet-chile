@@ -35,10 +35,12 @@ export default async function TorneosPage({
   const { data: torneos } = await supabase
     .from('tournaments')
     .select('*')
-    .order('date', { ascending: true })
+    .order('date', { ascending: false })
 
-  const upcoming = torneos?.filter(t => t.status === 'upcoming' || t.status === 'ongoing') ?? []
-  const allPast = (torneos?.filter(t => t.status === 'finished' || t.status === 'cancelled') ?? [])
+  const all = torneos ?? []
+  const upcoming = all.filter(t => t.status === 'upcoming' || t.status === 'ongoing')
+  const allPast = all
+    .filter(t => t.status === 'finished' || t.status === 'cancelled')
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   const totalPastPages = Math.ceil(allPast.length / PAST_PER_PAGE)
   const past = allPast.slice((page - 1) * PAST_PER_PAGE, page * PAST_PER_PAGE)
@@ -135,32 +137,24 @@ export default async function TorneosPage({
             {totalPastPages > 1 && (
               <div className="flex items-center justify-center gap-3 mt-5 px-4">
                 {page > 1 ? (
-                  <Link
-                    href={`/torneos?page=${page - 1}`}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
-                  >
-                    <ChevronLeft size={16} />
-                    Anterior
+                  <Link href={`/torneos?page=${page - 1}`}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                    <ChevronLeft size={16} /> Anterior
                   </Link>
                 ) : (
                   <span className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-sm font-medium text-slate-300 cursor-not-allowed">
-                    <ChevronLeft size={16} />
-                    Anterior
+                    <ChevronLeft size={16} /> Anterior
                   </span>
                 )}
                 <span className="text-sm text-slate-500 font-medium">{page} / {totalPastPages}</span>
                 {page < totalPastPages ? (
-                  <Link
-                    href={`/torneos?page=${page + 1}`}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
-                  >
-                    Siguiente
-                    <ChevronRight size={16} />
+                  <Link href={`/torneos?page=${page + 1}`}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm">
+                    Siguiente <ChevronRight size={16} />
                   </Link>
                 ) : (
                   <span className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-50 border border-slate-100 text-sm font-medium text-slate-300 cursor-not-allowed">
-                    Siguiente
-                    <ChevronRight size={16} />
+                    Siguiente <ChevronRight size={16} />
                   </span>
                 )}
               </div>

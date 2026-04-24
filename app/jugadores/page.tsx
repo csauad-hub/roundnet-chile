@@ -7,14 +7,12 @@ import { Instagram, Phone, MapPin, Users } from 'lucide-react'
 
 export default async function JugadoresPage() {
   const supabase = await createClient()
-  const { data: players } = await supabase
+  const { data } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url, city, region, instagram, phone')
+    .select('id, full_name, avatar_url, city, region, instagram, phone, visible_in_directory')
     .eq('visible_in_directory', true)
-    .not('full_name', 'is', null)
-    .order('full_name', { ascending: true })
 
-  const list = players ?? []
+  const list = data ?? []
 
   return (
     <div className="flex flex-col min-h-screen animate-in">
@@ -94,4 +92,4 @@ export default async function JugadoresPage() {
       <BottomNav />
     </div>
   )
-                  }
+}

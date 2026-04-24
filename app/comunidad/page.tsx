@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Users, Trophy, Instagram, ExternalLink } from 'lucide-react'
@@ -9,14 +11,13 @@ export default async function ComunidadPage() {
 
   const [{ count: players }, { count: tournaments }] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('tournaments').select('*', { count: 'exact', head: true }),
+    supabase.from('tournaments').select('*', { count: 'exact', head: true }).eq('status', 'finished'),
   ])
 
   return (
     <div className="flex flex-col min-h-screen animate-in">
       <Topbar title="Comunidad" />
       <main className="flex-1 pb-24 bg-slate-50">
-        {/* Stats */}
         <section className="px-4 mt-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="card p-5 text-center">
@@ -30,7 +31,6 @@ export default async function ComunidadPage() {
           </div>
         </section>
 
-        {/* About */}
         <section className="px-4 mt-4">
           <div className="card p-5">
             <h2 className="font-display font-black text-base text-slate-800 mb-3">¿Qué es Roundnet?</h2>
@@ -45,7 +45,6 @@ export default async function ComunidadPage() {
           </div>
         </section>
 
-        {/* Links */}
         <section className="px-4 mt-4">
           <h2 className="section-title mb-2.5">Síguenos</h2>
           <div className="flex flex-col gap-2">

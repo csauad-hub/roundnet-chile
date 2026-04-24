@@ -1,20 +1,10 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import { Newspaper, ChevronRight } from 'lucide-react'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
-
-type News = {
-  id: string
-  title: string
-  description: string | null
-  image_url: string | null
-  published_at: string | null
-  created_at: string
-  category: string | null
-}
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return ''
@@ -26,17 +16,13 @@ function formatDate(dateStr: string | null): string {
 }
 
 export default async function NoticiasPage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
+  const supabase = await createClient()
   const { data } = await supabase
     .from('news')
-    .select('id,title,description,image_url,published_at,created_at,category')
-    .order('created_at', { ascending: false })
+    .select('*')
+    .order('published_at', { ascending: false })
 
-  const news: News[] = data ?? []
+  const news = data ?? []
   const featured = news[0] ?? null
   const rest = news.slice(1)
 
@@ -51,7 +37,6 @@ export default async function NoticiasPage() {
             </div>
           ) : (
             <>
-              {/* Destacado */}
               {featured && (
                 <Link href={`/noticias/${featured.id}`} className="block group">
                   <div className="card overflow-hidden hover:shadow-md transition-shadow">
@@ -83,7 +68,6 @@ export default async function NoticiasPage() {
                   </div>
                 </Link>
               )}
-              {/* Lista */}
               {rest.map(n => (
                 <Link key={n.id} href={`/noticias/${n.id}`} className="block group">
                   <div className="card flex gap-3 px-4 py-3.5 hover:shadow-md transition-shadow">

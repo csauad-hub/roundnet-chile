@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
@@ -12,19 +12,13 @@ export default async function RankingPage({
 }) {
   const { categoria = 'Varones' } = await searchParams
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
-
-  const { data: ranking } = await supabase
+  const supabase = await createClient()
+  const { data: players } = await supabase
     .from('ranking')
-    .select('id, position, name, points')
+    .select('*')
     .eq('season', 2025)
     .eq('category', categoria)
-    .order('position', { ascending: true })
-
-  const players = ranking ?? []
+    .order('position')
 
   return (
     <div className="flex flex-col min-h-screen animate-in">
@@ -35,7 +29,6 @@ export default async function RankingPage({
           <p className="text-sm text-slate-500 mt-0.5">Temporada oficial</p>
         </div>
 
-        {/* Category Tabs */}
         <div className="flex gap-2 px-4 mt-4">
           {(['Varones', 'Damas'] as const).map(cat => (
             <Link
@@ -52,9 +45,8 @@ export default async function RankingPage({
           ))}
         </div>
 
-        {/* Ranking Table */}
         <div className="px-4 mt-4">
-          {players.length === 0 ? (
+          {!players || players.length === 0 ? (
             <div className="card px-4 py-8 text-center text-slate-400 text-sm">
               No hay datos de ranking aún.
             </div>

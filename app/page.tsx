@@ -5,46 +5,19 @@ import { ChevronRight, Newspaper } from 'lucide-react'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
 import { formatDate } from '@/lib/utils'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
 
 export default async function HomePage() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = await createClient()
 
-  const [{ data: newsData }, { data: torneoData }, { data: rankingVarones }, { data: rankingDamas }] = await Promise.all([
-    supabase
-      .from('news')
-      .select('id, title, description, image_url, published_at, created_at, category')
-      .order('created_at', { ascending: false })
-      .limit(3),
-    supabase
-      .from('tournaments')
-      .select('id, name, date, city, location, fwango_url, status')
-      .in('status', ['upcoming', 'ongoing'])
-      .order('date', { ascending: true })
-      .limit(1),
-    supabase
-      .from('ranking')
-      .select('id, position, name, points')
-      .eq('season', 2025)
-      .eq('category', 'Varones')
-      .order('position', { ascending: true })
-      .limit(3),
-    supabase
-      .from('ranking')
-      .select('id, position, name, points')
-      .eq('season', 2025)
-      .eq('category', 'Damas')
-      .order('position', { ascending: true })
-      .limit(3),
+  const [{ data: news }, { data: torneoData }, { data: varones }, { data: damas }] = await Promise.all([
+    supabase.from('news').select('*').order('published_at', { ascending: false }).limit(3),
+    supabase.from('tournaments').select('*').in('status', ['upcoming', 'ongoing']).order('date').limit(1),
+    supabase.from('ranking').select('*').eq('category', 'Varones').eq('season', 2025).order('position').limit(3),
+    supabase.from('ranking').select('*').eq('category', 'Damas').eq('season', 2025).order('position').limit(3),
   ])
 
-  const news = newsData ?? []
   const torneo = torneoData?.[0] ?? null
-  const varones = rankingVarones ?? []
-  const damas = rankingDamas ?? []
 
   const medal = (pos: number) =>
     pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : String(pos)
@@ -98,7 +71,7 @@ export default async function HomePage() {
             <Link href="/noticias" className="text-xs font-semibold text-blue-600 flex items-center gap-0.5">Ver todo <ChevronRight size={14} /></Link>
           </div>
           <div className="px-4 flex flex-col gap-2.5">
-            {news.length === 0 ? (
+            {!news || news.length === 0 ? (
               <div className="card px-4 py-6 text-center text-sm text-slate-400">No hay noticias aún.</div>
             ) : (
               news.map(n => (
@@ -132,7 +105,7 @@ export default async function HomePage() {
           <div className="card overflow-hidden">
             <div className="px-4 pt-3 pb-2">
               <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-2">Varones</p>
-              {varones.length === 0 ? (
+              {!varones || varones.length === 0 ? (
                 <p className="text-xs text-slate-400 py-1">Sin datos</p>
               ) : (
                 varones.map((p, i) => (
@@ -151,7 +124,7 @@ export default async function HomePage() {
             <div className="border-t border-slate-100 mx-4" />
             <div className="px-4 pt-3 pb-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-pink-500 mb-2">Damas</p>
-              {damas.length === 0 ? (
+              {!damas || damas.length === 0 ? (
                 <p className="text-xs text-slate-400 py-1">Sin datos</p>
               ) : (
                 damas.map((p, i) => (
