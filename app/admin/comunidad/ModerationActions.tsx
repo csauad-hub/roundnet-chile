@@ -1,47 +1,66 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, X } from 'lucide-react'
-import { approvePost, rejectPost } from './actions'
+import { Check, X, Trash2 } from 'lucide-react'
+import { approvePost, rejectPost, deletePost } from './actions'
 
-export function ModerationActions({ postId }: { postId: string }) {
-  const [loading, setLoading] = useState<'approve' | 'reject' | null>(null)
-  const [done, setDone] = useState<'approved' | 'rejected' | null>(null)
+type PostStatus = 'pending' | 'approved' | 'rejected'
 
-  if (done === 'approved') {
-    return <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-green-500/20 text-green-400">Aprobado</span>
+interface Props {
+  postId: string
+  status: PostStatus
+}
+
+export function ModerationActions({ postId, status }: Props) {
+  const [loading, setLoading] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+
+  const run = async (action: () => Promise<void>, key: string) => {
+    setLoading(key)
+    await action()
+    setDone(true)
+    setLoading(null)
   }
-  if (done === 'rejected') {
-    return <span className="text-xs font-semibold px-3 py-1.5 rounded-full bg-red-500/20 text-red-400">Rechazado</span>
+
+  if (done) {
+    return <span className="text-xs text-white/30 italic">Actualizado</span>
   }
 
   return (
-    <div className="flex gap-2 shrink-0">
+    <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
+      {status !== 'approved' && (
+        <button
+          onClick={() => run(() => approvePost(postId), 'approve')}
+          disabled={!!loading}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-500/15 text-green-400 hover:bg-green-500/25 disabled:opacity-40 transition-colors"
+        >
+          <Check size={13} />
+          {loading === 'approve' ? '...' : 'Aprobar'}
+        </button>
+      )}
+
+      {status !== 'rejected' && (
+        <button
+          onClick={() => run(() => rejectPost(postId), 'reject')}
+          disabled={!!loading}
+          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 disabled:opacity-40 transition-colors"
+        >
+          <X size={13} />
+          {loading === 'reject' ? '...' : 'Rechazar'}
+        </button>
+      )}
+
       <button
-        onClick={async () => {
-          setLoading('approve')
-          await approvePost(postId)
-          setDone('approved')
-          setLoading(null)
-        }}
-        disabled={!!loading}
-        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-green-500/15 text-green-400 hover:bg-green-500/25 disabled:opacity-40 transition-colors"
-      >
-        <Check size={13} />
-        {loading === 'approve' ? '...' : 'Aprobar'}
-      </button>
-      <button
-        onClick={async () => {
-          setLoading('reject')
-          await rejectPost(postId)
-          setDone('rejected')
-          setLoading(null)
+        onClick={() => {
+          if (confirm('¿Eliminar esta publicación permanentemente?')) {
+            run(() => deletePost(postId), 'delete')
+          }
         }}
         disabled={!!loading}
         className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-red-500/15 text-red-400 hover:bg-red-500/25 disabled:opacity-40 transition-colors"
       >
-        <X size={13} />
-        {loading === 'reject' ? '...' : 'Rechazar'}
+        <Trash2 size={13} />
+        {loading === 'delete' ? '...' : 'Eliminar'}
       </button>
     </div>
   )

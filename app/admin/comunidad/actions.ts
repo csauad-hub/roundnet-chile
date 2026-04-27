@@ -14,4 +14,12 @@ export async function rejectPost(postId: string) {
   const supabase = createAdminClient()
   await supabase.from('posts').update({ status: 'rejected' }).eq('id', postId)
   revalidatePath('/admin/comunidad')
+  revalidatePath('/comunidad')
+}
+
+export async function deletePost(postId: string) {
+  const supabase = createAdminClient()
+  await supabase.from('posts').delete().eq('id', postId)
+  revalidatePath('/admin/comunidad')
+  revalidatePath('/comunidad')
 }
