@@ -1,5 +1,4 @@
-export const dynamic = 'force-dynamic'
-
+import { unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
@@ -7,6 +6,7 @@ import { MapPin, Users, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function JugadoresPage() {
+  noStore()
   const supabase = createAdminClient()
   const { data } = await supabase
     .from('profiles')

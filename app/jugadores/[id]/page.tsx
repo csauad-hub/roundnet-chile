@@ -1,10 +1,9 @@
+import { unstable_noStore as noStore } from 'next/cache'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, MapPin, Instagram, MessageCircle } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import BottomNav from '@/components/layout/BottomNav'
-
-export const dynamic = 'force-dynamic'
 
 function whatsappUrl(phone: string): string {
   // Strip everything except digits, then build wa.me link
@@ -17,6 +16,7 @@ export default async function PlayerDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  noStore()
   const { id } = await params
   const supabase = createAdminClient()
 
