@@ -84,6 +84,7 @@ export default function BlogFeed() {
   const [myPending, setMyPending] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
+  const [userProfile, setUserProfile] = useState<Author | null>(null)
 
   const [showForm, setShowForm] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -101,8 +102,16 @@ export default function BlogFeed() {
   const [filterCategory, setFilterCategory] = useState<PostCategory | 'all'>('all')
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUserId(user?.id ?? null)
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name, avatar_url')
+          .eq('id', user.id)
+          .single()
+        setUserProfile(profile ?? null)
+      }
       fetchPosts(user?.id ?? null)
     })
   }, [])
@@ -190,7 +199,7 @@ export default function BlogFeed() {
     const { data, error } = await supabase
       .from('posts')
       .insert({ author_id: userId, category: newCategory, title: newTitle.trim(), content: newContent.trim(), media_url, status: 'pending' })
-      .select(POST_SELECT)
+      .select('id, author_id, category, title, content, media_url, likes_count, comments_count, created_at')
       .single()
 
     if (error) {
@@ -200,7 +209,11 @@ export default function BlogFeed() {
     }
 
     if (data) {
-      const newPost = { ...(data as object), author: normalizeAuthor((data as Record<string, unknown>).author), user_has_liked: false } as Post
+      const newPost: Post = {
+        ...(data as object) as Post,
+        author: userProfile,
+        user_has_liked: false,
+      }
       setMyPending(prev => [newPost, ...prev])
       setNewTitle('')
       setNewContent('')
