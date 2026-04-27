@@ -51,10 +51,14 @@ export default function PlayerProfileForm({ profile }: Props) {
     })
 
     setSaving(false)
+    const data = await res.json() as { ok?: boolean; error?: string; saved?: { visible_in_directory: boolean } }
     if (!res.ok) {
-      const data = await res.json() as { error?: string }
       setError(`Error: ${data.error ?? res.statusText}`)
     } else {
+      // Sync form state with what was actually persisted
+      if (data.saved) {
+        setForm(f => ({ ...f, visible_in_directory: data.saved!.visible_in_directory }))
+      }
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     }

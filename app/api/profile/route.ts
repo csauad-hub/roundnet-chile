@@ -36,19 +36,24 @@ export async function PATCH(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  const { error } = await admin
+  const { data: saved, error } = await admin
     .from('profiles')
-    .upsert({
-      id: user.id,
-      full_name: body.full_name || null,
-      city: body.city || null,
-      region: body.region || null,
-      instagram: body.instagram?.replace('@', '') || null,
-      phone: body.phone || null,
-      visible_in_directory: body.visible_in_directory ?? false,
-      updated_at: new Date().toISOString(),
-    })
+    .upsert(
+      {
+        id: user.id,
+        full_name: body.full_name || null,
+        city: body.city || null,
+        region: body.region || null,
+        instagram: body.instagram?.replace('@', '') || null,
+        phone: body.phone || null,
+        visible_in_directory: body.visible_in_directory ?? false,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' }
+    )
+    .select('id, full_name, visible_in_directory')
+    .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, saved })
 }
