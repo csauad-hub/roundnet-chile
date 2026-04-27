@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { MessageSquare, Heart, Plus, Send, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { MessageSquare, Heart, Plus, Send, ChevronDown, ChevronUp, X, ImageVideo, AlertCircle } from 'lucide-react'
 
 type PostCategory = 'tecnica' | 'general' | 'ayuda' | 'humor'
 
@@ -30,7 +30,9 @@ interface Post {
   author_id: string
   author: Author | null
   category: PostCategory
+  title: string
   content: string
+  media_url: string | null
   likes_count: number
   comments_count: number
   user_has_liked: boolean
@@ -47,13 +49,11 @@ interface Comment {
 }
 
 function Avatar({ name, url, size = 7 }: { name: string; url?: string | null; size?: number }) {
-  const sizeClass = `w-${size} h-${size}`
-  const textClass = size <= 7 ? 'text-[10px]' : 'text-sm'
-  if (url) {
-    return <img src={url} alt={name} className={`${sizeClass} rounded-full object-cover flex-shrink-0`} />
-  }
+  const dim = `w-${size} h-${size}`
+  const text = size <= 7 ? 'text-[10px]' : 'text-sm'
+  if (url) return <img src={url} alt={name} className={`${dim} rounded-full object-cover flex-shrink-0`} />
   return (
-    <div className={`${sizeClass} rounded-full bg-blue-600 flex items-center justify-center text-white font-black ${textClass} flex-shrink-0`}>
+    <div className={`${dim} rounded-full bg-blue-600 flex items-center justify-center text-white font-black ${text} flex-shrink-0`}>
       {name[0].toUpperCase()}
     </div>
   )
@@ -72,8 +72,10 @@ function formatTime(iso: string) {
 function normalizeAuthor(raw: unknown): Author | null {
   if (!raw) return null
   const obj = Array.isArray(raw) ? raw[0] : raw
-  return obj as Author ?? null
+  return (obj as Author) ?? null
 }
+
+const POST_SELECT = 'id, author_id, category, title, content, media_url, likes_count, comments_count, created_at, author:profiles!author_id(full_name, avatar_url)'
 
 export default function BlogFeed() {
   const supabase = createClient()
@@ -82,54 +84,47 @@ export default function BlogFeed() {
   const [myPending, setMyPending] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
-  const [showNewPost, setShowNewPost] = useState(false)
+
+  const [showForm, setShowForm] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
   const [newContent, setNewContent] = useState('')
   const [newCategory, setNewCategory] = useState<PostCategory>('general')
+  const [mediaFile, setMediaFile] = useState<File | null>(null)
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [expandedPost, setExpandedPost] = useState<string | null>(null)
   const [comments, setComments] = useState<Record<string, Comment[]>>({})
   const [newComment, setNewComment] = useState<Record<string, string>>({})
   const [filterCategory, setFilterCategory] = useState<PostCategory | 'all'>('all')
 
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+    supabase.auth.getUser().then(({ data: { user } }) => {
       setUserId(user?.id ?? null)
-      await fetchPosts(user?.id ?? null)
-    }
-    init()
+      fetchPosts(user?.id ?? null)
+    })
   }, [])
 
   const fetchPosts = async (uid: string | null) => {
     setLoading(true)
 
-    const queries: Promise<unknown>[] = [
-      supabase
-        .from('posts')
-        .select('id, author_id, category, content, likes_count, comments_count, created_at, author:profiles!author_id(full_name, avatar_url)')
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(50),
-    ]
+    const approvedQ = supabase
+      .from('posts')
+      .select(POST_SELECT)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(50)
 
-    if (uid) {
-      queries.push(
-        supabase
-          .from('posts')
-          .select('id, author_id, category, content, likes_count, comments_count, created_at, author:profiles!author_id(full_name, avatar_url)')
-          .eq('status', 'pending')
-          .eq('author_id', uid)
-          .order('created_at', { ascending: false })
-      )
-    }
+    const pendingQ = uid
+      ? supabase.from('posts').select(POST_SELECT).eq('status', 'pending').eq('author_id', uid).order('created_at', { ascending: false })
+      : null
 
-    const [approvedRes, pendingRes] = await Promise.all(queries) as [
-      { data: Record<string, unknown>[] | null },
-      { data: Record<string, unknown>[] | null } | undefined,
-    ]
+    const [approvedRes, pendingRes] = await Promise.all([approvedQ, pendingQ ?? Promise.resolve({ data: [] })])
 
-    const approved = approvedRes.data ?? []
-    const pending = pendingRes?.data ?? []
+    const approved = (approvedRes.data ?? []) as Record<string, unknown>[]
+    const pending = (pendingRes.data ?? []) as Record<string, unknown>[]
 
     let likedIds = new Set<string>()
     if (uid && approved.length > 0) {
@@ -141,19 +136,80 @@ export default function BlogFeed() {
       likedIds = new Set((likes ?? []).map(l => l.post_id))
     }
 
-    setPosts(approved.map(p => ({
-      ...(p as object),
-      author: normalizeAuthor(p.author),
-      user_has_liked: likedIds.has(p.id as string),
-    } as Post)))
-
-    setMyPending(pending.map(p => ({
-      ...(p as object),
-      author: normalizeAuthor(p.author),
-      user_has_liked: false,
-    } as Post)))
-
+    setPosts(approved.map(p => ({ ...(p as object), author: normalizeAuthor(p.author), user_has_liked: likedIds.has(p.id as string) } as Post)))
+    setMyPending(pending.map(p => ({ ...(p as object), author: normalizeAuthor(p.author), user_has_liked: false } as Post)))
     setLoading(false)
+  }
+
+  const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 50 * 1024 * 1024) {
+      setSubmitError('El archivo no puede superar 50 MB.')
+      return
+    }
+    setMediaFile(file)
+    setMediaPreview(URL.createObjectURL(file))
+    setSubmitError(null)
+  }
+
+  const clearMedia = () => {
+    setMediaFile(null)
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview)
+    setMediaPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleNewPost = async () => {
+    if (!userId || submitting) return
+    if (!newTitle.trim()) { setSubmitError('El título es obligatorio.'); return }
+    if (!newContent.trim()) { setSubmitError('El contenido es obligatorio.'); return }
+
+    setSubmitting(true)
+    setSubmitError(null)
+
+    let media_url: string | null = null
+
+    if (mediaFile) {
+      const ext = mediaFile.name.split('.').pop()
+      const path = `${userId}/${Date.now()}.${ext}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('post-media')
+        .upload(path, mediaFile, { upsert: false })
+
+      if (uploadError) {
+        setSubmitError(`Error al subir el archivo: ${uploadError.message}`)
+        setSubmitting(false)
+        return
+      }
+
+      const { data: urlData } = supabase.storage.from('post-media').getPublicUrl(uploadData.path)
+      media_url = urlData.publicUrl
+    }
+
+    const { data, error } = await supabase
+      .from('posts')
+      .insert({ author_id: userId, category: newCategory, title: newTitle.trim(), content: newContent.trim(), media_url, status: 'pending' })
+      .select(POST_SELECT)
+      .single()
+
+    if (error) {
+      setSubmitError(`No se pudo publicar: ${error.message}`)
+      setSubmitting(false)
+      return
+    }
+
+    if (data) {
+      const newPost = { ...(data as object), author: normalizeAuthor((data as Record<string, unknown>).author), user_has_liked: false } as Post
+      setMyPending(prev => [newPost, ...prev])
+      setNewTitle('')
+      setNewContent('')
+      setNewCategory('general')
+      clearMedia()
+      setShowForm(false)
+    }
+
+    setSubmitting(false)
   }
 
   const handleLike = async (post: Post) => {
@@ -170,28 +226,8 @@ export default function BlogFeed() {
     }
   }
 
-  const handleNewPost = async () => {
-    if (!userId || !newContent.trim() || submitting) return
-    setSubmitting(true)
-    const { data, error } = await supabase
-      .from('posts')
-      .insert({ author_id: userId, category: newCategory, content: newContent.trim() })
-      .select('id, author_id, category, content, likes_count, comments_count, created_at, author:profiles!author_id(full_name, avatar_url)')
-      .single()
-
-    if (!error && data) {
-      setPosts(prev => [{ ...data, author: normalizeAuthor(data.author), user_has_liked: false }, ...prev])
-      setNewContent('')
-      setShowNewPost(false)
-    }
-    setSubmitting(false)
-  }
-
   const togglePost = async (postId: string) => {
-    if (expandedPost === postId) {
-      setExpandedPost(null)
-      return
-    }
+    if (expandedPost === postId) { setExpandedPost(null); return }
     setExpandedPost(postId)
     if (comments[postId]) return
     const { data } = await supabase
@@ -210,7 +246,6 @@ export default function BlogFeed() {
       .insert({ post_id: postId, author_id: userId, content })
       .select('id, post_id, author_id, content, created_at, author:profiles!author_id(full_name, avatar_url)')
       .single()
-
     if (!error && data) {
       setComments(prev => ({ ...prev, [postId]: [...(prev[postId] ?? []), { ...data, author: normalizeAuthor(data.author) }] }))
       setNewComment(prev => ({ ...prev, [postId]: '' }))
@@ -226,7 +261,7 @@ export default function BlogFeed() {
         <h2 className="section-title">Foro de la comunidad</h2>
         {userId && (
           <button
-            onClick={() => setShowNewPost(v => !v)}
+            onClick={() => { setShowForm(v => !v); setSubmitError(null) }}
             className="flex items-center gap-1 text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full active:scale-95 transition-transform"
           >
             <Plus size={13} /> Publicar
@@ -240,9 +275,7 @@ export default function BlogFeed() {
           <button
             key={cat}
             onClick={() => setFilterCategory(cat)}
-            className={`flex-shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full transition-colors ${
-              filterCategory === cat ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
-            }`}
+            className={`flex-shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-full transition-colors ${filterCategory === cat ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
           >
             {cat === 'all' ? 'Todo' : CATEGORY_LABELS[cat]}
           </button>
@@ -250,41 +283,100 @@ export default function BlogFeed() {
       </div>
 
       {/* Formulario nueva publicación */}
-      {showNewPost && (
+      {showForm && (
         <div className="card p-4 mb-3">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-bold text-slate-800">Nueva publicación</p>
-            <button onClick={() => setShowNewPost(false)}>
+            <button onClick={() => { setShowForm(false); setSubmitError(null) }}>
               <X size={16} className="text-slate-400" />
             </button>
           </div>
-          <div className="flex gap-1.5 mb-3 flex-wrap">
+
+          {/* Categoría */}
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Categoría</p>
+          <div className="flex gap-1.5 mb-4 flex-wrap">
             {(Object.keys(CATEGORY_LABELS) as PostCategory[]).map(cat => (
               <button
                 key={cat}
                 onClick={() => setNewCategory(cat)}
-                className={`text-[11px] font-semibold px-3 py-1.5 rounded-full transition-colors ${
-                  newCategory === cat ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'
-                }`}
+                className={`text-[11px] font-semibold px-3 py-1.5 rounded-full transition-colors ${newCategory === cat ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}
               >
                 {CATEGORY_LABELS[cat]}
               </button>
             ))}
           </div>
+
+          {/* Título */}
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Título <span className="text-red-400">*</span></p>
+          <input
+            type="text"
+            value={newTitle}
+            onChange={e => { setNewTitle(e.target.value); setSubmitError(null) }}
+            placeholder="Ej: ¿Cómo mejorar el remate?"
+            maxLength={120}
+            className="w-full text-sm text-slate-800 placeholder:text-slate-300 border border-slate-200 rounded-xl px-3 py-2.5 mb-4 focus:outline-none focus:border-blue-400"
+          />
+
+          {/* Contenido */}
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Contenido <span className="text-red-400">*</span></p>
           <textarea
             value={newContent}
-            onChange={e => setNewContent(e.target.value)}
-            placeholder="¿Qué quieres compartir con la comunidad?"
+            onChange={e => { setNewContent(e.target.value); setSubmitError(null) }}
+            placeholder="Comparte tu pregunta, experiencia o idea con la comunidad..."
             rows={4}
-            className="w-full text-sm text-slate-800 placeholder:text-slate-300 border border-slate-200 rounded-xl p-3 resize-none focus:outline-none focus:border-blue-400"
+            className="w-full text-sm text-slate-800 placeholder:text-slate-300 border border-slate-200 rounded-xl p-3 resize-none mb-4 focus:outline-none focus:border-blue-400"
           />
+
+          {/* Media */}
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Foto o video <span className="text-slate-300">(opcional)</span></p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            onChange={handleMediaSelect}
+            className="hidden"
+          />
+
+          {mediaPreview ? (
+            <div className="relative mb-4 rounded-xl overflow-hidden bg-slate-100">
+              {mediaFile?.type.startsWith('video/') ? (
+                <video src={mediaPreview} controls className="w-full max-h-48 object-contain" />
+              ) : (
+                <img src={mediaPreview} alt="preview" className="w-full max-h-48 object-cover" />
+              )}
+              <button
+                onClick={clearMedia}
+                className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 w-full border border-dashed border-slate-300 rounded-xl py-3 px-4 mb-4 text-sm text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+            >
+              <ImageVideo size={18} />
+              Subir foto o video
+            </button>
+          )}
+
+          {/* Error */}
+          {submitError && (
+            <div className="flex items-center gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5 mb-3">
+              <AlertCircle size={14} className="flex-shrink-0" />
+              {submitError}
+            </div>
+          )}
+
           <button
             onClick={handleNewPost}
-            disabled={submitting || !newContent.trim()}
-            className="mt-2 w-full bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
+            disabled={submitting}
+            className="w-full bg-blue-600 text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
           >
             {submitting ? 'Publicando...' : 'Publicar'}
           </button>
+          <p className="text-center text-[11px] text-slate-400 mt-2">Tu publicación será revisada por un admin antes de aparecer.</p>
         </div>
       )}
 
@@ -293,7 +385,7 @@ export default function BlogFeed() {
         <div className="flex flex-col gap-2 mb-3">
           {myPending.map(post => (
             <div key={post.id} className="card overflow-hidden border border-amber-200">
-              <div className="px-4 py-2 bg-amber-50 flex items-center gap-2">
+              <div className="px-4 py-2 bg-amber-50">
                 <span className="text-[11px] font-semibold text-amber-600">En revisión — visible solo para ti</span>
               </div>
               <div className="p-4">
@@ -307,6 +399,7 @@ export default function BlogFeed() {
                     {CATEGORY_LABELS[post.category]}
                   </span>
                 </div>
+                {post.title && <p className="text-sm font-bold text-slate-800 mb-1">{post.title}</p>}
                 <p className="text-sm text-slate-700 leading-relaxed">{post.content}</p>
               </div>
             </div>
@@ -314,7 +407,7 @@ export default function BlogFeed() {
         </div>
       )}
 
-      {/* Lista de posts */}
+      {/* Lista de posts aprobados */}
       {loading ? (
         <div className="flex flex-col gap-2.5">
           {[1, 2, 3].map(i => (
@@ -326,8 +419,9 @@ export default function BlogFeed() {
                   <div className="h-2 bg-slate-100 rounded w-1/4" />
                 </div>
               </div>
+              <div className="h-3 bg-slate-200 rounded w-2/3 mb-2" />
               <div className="h-3 bg-slate-100 rounded w-full mb-1.5" />
-              <div className="h-3 bg-slate-100 rounded w-2/3" />
+              <div className="h-3 bg-slate-100 rounded w-4/5" />
             </div>
           ))}
         </div>
@@ -347,11 +441,12 @@ export default function BlogFeed() {
             const isExpanded = expandedPost === post.id
             const authorName = post.author?.full_name || 'Jugador'
             const postComments = comments[post.id] ?? []
+            const isVideo = post.media_url && (post.media_url.includes('.mp4') || post.media_url.includes('.mov') || post.media_url.includes('.webm'))
 
             return (
               <div key={post.id} className="card overflow-hidden">
                 <div className="p-4">
-                  {/* Header del post */}
+                  {/* Header */}
                   <div className="flex items-center gap-2 mb-2.5">
                     <Avatar name={authorName} url={post.author?.avatar_url} size={7} />
                     <div className="flex-1 min-w-0">
@@ -363,8 +458,24 @@ export default function BlogFeed() {
                     </span>
                   </div>
 
+                  {/* Título */}
+                  {post.title && (
+                    <p className="text-sm font-bold text-slate-800 mb-1 leading-snug">{post.title}</p>
+                  )}
+
                   {/* Contenido */}
-                  <p className="text-sm text-slate-700 leading-relaxed">{post.content}</p>
+                  <p className="text-sm text-slate-600 leading-relaxed">{post.content}</p>
+
+                  {/* Media */}
+                  {post.media_url && (
+                    <div className="mt-3 rounded-xl overflow-hidden bg-slate-100">
+                      {isVideo ? (
+                        <video src={post.media_url} controls className="w-full max-h-64 object-contain" />
+                      ) : (
+                        <img src={post.media_url} alt={post.title || 'imagen'} className="w-full max-h-64 object-cover" />
+                      )}
+                    </div>
+                  )}
 
                   {/* Acciones */}
                   <div className="flex items-center gap-4 mt-3">
@@ -386,7 +497,7 @@ export default function BlogFeed() {
                   </div>
                 </div>
 
-                {/* Sección de comentarios */}
+                {/* Comentarios */}
                 {isExpanded && (
                   <div className="border-t border-slate-100 bg-slate-50 px-4 py-3">
                     {postComments.length === 0 ? (
@@ -410,7 +521,6 @@ export default function BlogFeed() {
                         })}
                       </div>
                     )}
-
                     {userId ? (
                       <div className="flex gap-2 items-center">
                         <input

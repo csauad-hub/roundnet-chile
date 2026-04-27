@@ -22,7 +22,7 @@ export default async function AdminComunidadPage() {
   const [{ data: pending }, { count: approvedCount }, { count: rejectedCount }] = await Promise.all([
     supabase
       .from('posts')
-      .select('id, category, content, created_at, author:profiles!author_id(full_name)')
+      .select('id, category, title, content, media_url, created_at, author:profiles!author_id(full_name)')
       .eq('status', 'pending')
       .order('created_at', { ascending: true }),
     supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
@@ -93,9 +93,21 @@ export default async function AdminComunidadPage() {
                           <Clock size={10} /> {date}
                         </span>
                       </div>
+                      {post.title && (
+                        <p className="text-sm font-bold text-white mb-1">{post.title}</p>
+                      )}
                       <p className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.7)' }}>
                         {post.content}
                       </p>
+                      {post.media_url && (
+                        <div className="mt-2 rounded-lg overflow-hidden max-h-40">
+                          {String(post.media_url).match(/\.(mp4|mov|webm)/) ? (
+                            <video src={String(post.media_url)} controls className="w-full max-h-40 object-contain bg-black" />
+                          ) : (
+                            <img src={String(post.media_url)} alt="media" className="w-full max-h-40 object-cover" />
+                          )}
+                        </div>
+                      )}
                     </div>
                     <ModerationActions postId={post.id} />
                   </div>
