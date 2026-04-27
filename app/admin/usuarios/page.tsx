@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { Shield, User } from 'lucide-react'
 
 interface Profile {
@@ -10,9 +10,8 @@ interface Profile {
 }
 
 export default async function UsuariosPage() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
-  // Get all profiles joined with auth users (emails)
   const { data: profiles, error } = await supabase
     .from('profiles')
     .select('*')

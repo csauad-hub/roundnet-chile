@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
 import { Instagram, Phone, MapPin, Users } from 'lucide-react'
 
 export default async function JugadoresPage() {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data } = await supabase
     .from('profiles')
     .select('id, full_name, avatar_url, city, region, instagram, phone, visible_in_directory')
