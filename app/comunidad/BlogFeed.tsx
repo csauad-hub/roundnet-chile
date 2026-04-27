@@ -75,7 +75,7 @@ function normalizeAuthor(raw: unknown): Author | null {
   return (obj as Author) ?? null
 }
 
-const POST_SELECT = 'id, author_id, category, title, content, media_url, likes_count, comments_count, created_at, author:profiles!author_id(full_name, avatar_url)'
+const POST_SELECT = 'id, author_id, category, title, content, media_url, likes_count, comments_count, created_at'
 
 export default function BlogFeed() {
   const supabase = createClient()
@@ -135,6 +135,19 @@ export default function BlogFeed() {
     const approved = (approvedRes.data ?? []) as Record<string, unknown>[]
     const pending = (pendingRes.data ?? []) as Record<string, unknown>[]
 
+    // Fetch author profiles separately to avoid FK join issues
+    const allIds = [...new Set([...approved, ...pending].map(p => p.author_id as string))]
+    const profileMap: Record<string, Author> = {}
+    if (allIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', allIds)
+      for (const p of profiles ?? []) {
+        profileMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url }
+      }
+    }
+
     let likedIds = new Set<string>()
     if (uid && approved.length > 0) {
       const { data: likes } = await supabase
@@ -145,8 +158,8 @@ export default function BlogFeed() {
       likedIds = new Set((likes ?? []).map(l => l.post_id))
     }
 
-    setPosts(approved.map(p => ({ ...(p as object), author: normalizeAuthor(p.author), user_has_liked: likedIds.has(p.id as string) } as Post)))
-    setMyPending(pending.map(p => ({ ...(p as object), author: normalizeAuthor(p.author), user_has_liked: false } as Post)))
+    setPosts(approved.map(p => ({ ...(p as object), author: profileMap[p.author_id as string] ?? null, user_has_liked: likedIds.has(p.id as string) } as Post)))
+    setMyPending(pending.map(p => ({ ...(p as object), author: profileMap[p.author_id as string] ?? null, user_has_liked: false } as Post)))
     setLoading(false)
   }
 
@@ -243,12 +256,24 @@ export default function BlogFeed() {
     if (expandedPost === postId) { setExpandedPost(null); return }
     setExpandedPost(postId)
     if (comments[postId]) return
-    const { data } = await supabase
+    const { data: commentData } = await supabase
       .from('post_comments')
-      .select('id, post_id, author_id, content, created_at, author:profiles!author_id(full_name, avatar_url)')
+      .select('id, post_id, author_id, content, created_at')
       .eq('post_id', postId)
       .order('created_at', { ascending: true })
-    setComments(prev => ({ ...prev, [postId]: (data ?? []).map(c => ({ ...c, author: normalizeAuthor(c.author) })) }))
+
+    const cids = [...new Set((commentData ?? []).map(c => c.author_id))]
+    const cProfileMap: Record<string, Author> = {}
+    if (cids.length > 0) {
+      const { data: cProfiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url')
+        .in('id', cids)
+      for (const p of cProfiles ?? []) {
+        cProfileMap[p.id] = { full_name: p.full_name, avatar_url: p.avatar_url }
+      }
+    }
+    setComments(prev => ({ ...prev, [postId]: (commentData ?? []).map(c => ({ ...c, author: cProfileMap[c.author_id] ?? null })) }))
   }
 
   const handleComment = async (postId: string) => {
@@ -257,10 +282,10 @@ export default function BlogFeed() {
     const { data, error } = await supabase
       .from('post_comments')
       .insert({ post_id: postId, author_id: userId, content })
-      .select('id, post_id, author_id, content, created_at, author:profiles!author_id(full_name, avatar_url)')
+      .select('id, post_id, author_id, content, created_at')
       .single()
     if (!error && data) {
-      setComments(prev => ({ ...prev, [postId]: [...(prev[postId] ?? []), { ...data, author: normalizeAuthor(data.author) }] }))
+      setComments(prev => ({ ...prev, [postId]: [...(prev[postId] ?? []), { ...data, author: userProfile }] }))
       setNewComment(prev => ({ ...prev, [postId]: '' }))
       setPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p))
     }

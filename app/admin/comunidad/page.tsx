@@ -19,17 +19,30 @@ const CATEGORY_COLORS: Record<string, string> = {
 export default async function AdminComunidadPage() {
   const supabase = createAdminClient()
 
-  const [{ data: pending }, { count: approvedCount }, { count: rejectedCount }] = await Promise.all([
+  const [{ data: pendingRaw }, { count: approvedCount }, { count: rejectedCount }] = await Promise.all([
     supabase
       .from('posts')
-      .select('id, category, title, content, media_url, created_at, author:profiles!author_id(full_name)')
+      .select('id, author_id, category, title, content, media_url, created_at')
       .eq('status', 'pending')
       .order('created_at', { ascending: true }),
     supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'approved'),
     supabase.from('posts').select('*', { count: 'exact', head: true }).eq('status', 'rejected'),
   ])
 
-  const posts = pending ?? []
+  const posts = pendingRaw ?? []
+
+  // Fetch author names separately to avoid FK join issues
+  const authorIds = [...new Set(posts.map(p => p.author_id))]
+  const authorMap: Record<string, string> = {}
+  if (authorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', authorIds)
+    for (const p of profiles ?? []) {
+      authorMap[p.id] = p.full_name || 'Usuario'
+    }
+  }
 
   return (
     <div className="py-2 space-y-6">
@@ -70,11 +83,11 @@ export default async function AdminComunidadPage() {
         ) : (
           <div className="flex flex-col gap-3">
             {posts.map(post => {
-              const author = Array.isArray(post.author) ? post.author[0] : post.author
-              const authorName = (author as { full_name?: string } | null)?.full_name || 'Usuario desconocido'
+              const authorName = authorMap[post.author_id] || 'Usuario desconocido'
               const date = new Date(post.created_at).toLocaleDateString('es-CL', {
                 day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
               })
+              const isVideo = post.media_url && String(post.media_url).match(/\.(mp4|mov|webm)/)
 
               return (
                 <div
@@ -101,7 +114,7 @@ export default async function AdminComunidadPage() {
                       </p>
                       {post.media_url && (
                         <div className="mt-2 rounded-lg overflow-hidden max-h-40">
-                          {String(post.media_url).match(/\.(mp4|mov|webm)/) ? (
+                          {isVideo ? (
                             <video src={String(post.media_url)} controls className="w-full max-h-40 object-contain bg-black" />
                           ) : (
                             <img src={String(post.media_url)} alt="media" className="w-full max-h-40 object-cover" />
