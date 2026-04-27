@@ -3,14 +3,16 @@ export const dynamic = 'force-dynamic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
-import { Instagram, Phone, MapPin, Users } from 'lucide-react'
+import { MapPin, Users, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 
 export default async function JugadoresPage() {
   const supabase = createAdminClient()
   const { data } = await supabase
     .from('profiles')
-    .select('id, full_name, avatar_url, city, region, instagram, phone, visible_in_directory')
+    .select('id, full_name, avatar_url, city, region, instagram, phone')
     .eq('visible_in_directory', true)
+    .order('full_name', { ascending: true })
 
   const list = data ?? []
 
@@ -29,7 +31,7 @@ export default async function JugadoresPage() {
               <p className="text-sm font-semibold text-slate-600">Aún no hay jugadores en el directorio</p>
               <p className="text-xs text-slate-400 mt-2 leading-relaxed">
                 Los jugadores pueden aparecer aquí activando la opción
-                "Visible en directorio" desde su perfil.
+                &quot;Visible en directorio&quot; desde su perfil.
               </p>
             </div>
           ) : (
@@ -37,9 +39,8 @@ export default async function JugadoresPage() {
               {list.map(p => {
                 const initial = (p.full_name || '?')[0].toUpperCase()
                 const location = [p.city, p.region].filter(Boolean).join(', ')
-                const igHandle = p.instagram?.replace('@', '')
                 return (
-                  <div key={p.id} className="card px-4 py-4 flex items-center gap-3">
+                  <Link key={p.id} href={`/jugadores/${p.id}`} className="card px-4 py-4 flex items-center gap-3 active:scale-[0.98] transition-transform">
                     {p.avatar_url ? (
                       <img
                         src={p.avatar_url}
@@ -52,37 +53,18 @@ export default async function JugadoresPage() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="font-display font-black text-sm text-slate-800">{p.full_name}</p>
+                      <p className="font-display font-black text-sm text-slate-800">
+                        {p.full_name || 'Sin nombre'}
+                      </p>
                       {location && (
                         <p className="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
                           <MapPin size={11} className="flex-shrink-0" />
                           {location}
                         </p>
                       )}
-                      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-                        {igHandle && (
-                          <a
-                            href={`https://instagram.com/${igHandle}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-pink-500 font-medium"
-                          >
-                            <Instagram size={12} />
-                            @{igHandle}
-                          </a>
-                        )}
-                        {p.phone && (
-                          <a
-                            href={`tel:${p.phone}`}
-                            className="flex items-center gap-1 text-xs text-blue-500 font-medium"
-                          >
-                            <Phone size={12} />
-                            {p.phone}
-                          </a>
-                        )}
-                      </div>
                     </div>
-                  </div>
+                    <ChevronRight size={16} className="text-slate-300 flex-shrink-0" />
+                  </Link>
                 )
               })}
             </div>
