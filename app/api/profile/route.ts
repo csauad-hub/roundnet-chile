@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function PATCH(request: Request) {
   const cookieStore = await cookies()
@@ -29,31 +29,43 @@ export async function PATCH(request: Request) {
     visible_in_directory?: boolean
   }
 
-  // Service role key bypasses RLS entirely — safe here because
-  // we enforce user identity server-side with getUser()
-  const admin = createAdminClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  const admin = createAdminClient()
 
-  const { data: saved, error } = await admin
+  const payload = {
+    full_name: body.full_name || null,
+    city: body.city || null,
+    region: body.region || null,
+    instagram: body.instagram ? body.instagram.replace('@', '') : null,
+    phone: body.phone || null,
+    visible_in_directory: body.visible_in_directory === true,
+    updated_at: new Date().toISOString(),
+  }
+
+  // Try UPDATE first
+  const { data: updated, error: updateError } = await admin
     .from('profiles')
-    .upsert(
-      {
-        id: user.id,
-        full_name: body.full_name || null,
-        city: body.city || null,
-        region: body.region || null,
-        instagram: body.instagram?.replace('@', '') || null,
-        phone: body.phone || null,
-        visible_in_directory: body.visible_in_directory ?? false,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' }
-    )
+    .update(payload)
+    .eq('id', user.id)
     .select('id, full_name, visible_in_directory')
-    .single()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ ok: true, saved })
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  // If no row existed yet, INSERT it
+  if (!updated || updated.length === 0) {
+    const { data: inserted, error: insertError } = await admin
+      .from('profiles')
+      .insert({ id: user.id, ...payload })
+      .select('id, full_name, visible_in_directory')
+      .single()
+
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true, saved: inserted })
+  }
+
+  return NextResponse.json({ ok: true, saved: updated[0] })
 }

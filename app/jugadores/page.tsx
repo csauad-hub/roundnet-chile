@@ -12,7 +12,7 @@ export default async function JugadoresPage() {
     .from('profiles')
     .select('id, full_name, avatar_url, city, region, instagram, phone')
     .eq('visible_in_directory', true)
-    .order('full_name', { ascending: true })
+    .order('full_name', { ascending: true, nullsFirst: false })
 
   const list = data ?? []
 
