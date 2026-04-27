@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Instagram, Phone, MapPin, Eye, EyeOff, Save, User } from 'lucide-react'
 
@@ -22,7 +22,8 @@ const REGIONS = [
 ]
 
 export default function PlayerProfileForm({ profile }: Props) {
-  const supabase = createClient()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const supabase = useMemo(() => createClient(), [])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,20 +39,30 @@ export default function PlayerProfileForm({ profile }: Props) {
   const handleSave = async () => {
     setSaving(true)
     setError(null)
+
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      setSaving(false)
+      setError('Sesión expirada. Por favor recarga la página.')
+      return
+    }
+
+    // upsert handles both insert (no row yet) and update
     const { error: err } = await supabase
       .from('profiles')
-      .update({
+      .upsert({
+        id: profile.id,
         full_name: form.full_name || null,
         city: form.city || null,
         region: form.region || null,
         instagram: form.instagram?.replace('@', '') || null,
         phone: form.phone || null,
         visible_in_directory: form.visible_in_directory,
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', profile.id)
     setSaving(false)
     if (err) {
-      setError('Error al guardar. Intenta de nuevo.')
+      setError(`Error: ${err.message}`)
     } else {
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
