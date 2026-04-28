@@ -69,6 +69,21 @@ create trigger on_comment_inserted
   after insert or delete on public.post_comments
   for each row execute procedure public.handle_comment_count();
 
+-- ── helper: is_admin() ──────────────────────────────────────
+-- Función SECURITY DEFINER para evitar recursión infinita en políticas RLS
+-- que consultan la tabla profiles desde otras tablas con RLS activo.
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+$$;
+
 -- ── tournaments ──────────────────────────────────────────────
 create table if not exists public.tournaments (
   id             uuid primary key default gen_random_uuid(),
@@ -90,7 +105,7 @@ alter table public.tournaments enable row level security;
 
 create policy "tournaments_select_all" on public.tournaments for select using (true);
 create policy "tournaments_admin_all"  on public.tournaments for all
-  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+  using (public.is_admin()) with check (public.is_admin());
 
 -- ── news ─────────────────────────────────────────────────────
 create table if not exists public.news (
@@ -99,17 +114,20 @@ create table if not exists public.news (
   description  text,
   image_url    text,
   link         text,
-  published_at text,
+  published_at timestamptz,
   category     text,
   created_at   timestamptz default now(),
   updated_at   timestamptz default now()
 );
 
+-- ► MIGRACIÓN para bases de datos existentes (ejecutar una sola vez en Supabase SQL Editor):
+-- alter table public.news alter column published_at type timestamptz using published_at::timestamptz;
+
 alter table public.news enable row level security;
 
 create policy "news_select_all" on public.news for select using (true);
 create policy "news_admin_all"  on public.news for all
-  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+  using (public.is_admin()) with check (public.is_admin());
 
 -- ── ranking ──────────────────────────────────────────────────
 create table if not exists public.ranking (
@@ -127,4 +145,4 @@ alter table public.ranking enable row level security;
 
 create policy "ranking_select_all" on public.ranking for select using (true);
 create policy "ranking_admin_all"  on public.ranking for all
-  using (exists (select 1 from public.profiles where id = auth.uid() and role = 'admin'));
+  using (public.is_admin()) with check (public.is_admin());

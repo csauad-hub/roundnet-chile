@@ -20,7 +20,7 @@ export default async function NoticiasPage() {
   const { data } = await supabase
     .from('news')
     .select('*')
-    .order('published_at', { ascending: false })
+    .order('published_at', { ascending: false, nullsFirst: false })
 
   const news = data ?? []
   const featured = news[0] ?? null

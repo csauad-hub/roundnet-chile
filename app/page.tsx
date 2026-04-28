@@ -11,7 +11,7 @@ export default async function HomePage() {
   const supabase = await createClient()
 
   const [{ data: news }, { data: torneoData }, { data: varones }, { data: damas }] = await Promise.all([
-    supabase.from('news').select('*').order('published_at', { ascending: false }).limit(3),
+    supabase.from('news').select('*').order('published_at', { ascending: false, nullsFirst: false }).limit(3),
     supabase.from('tournaments').select('*').in('status', ['upcoming', 'ongoing']).order('date').limit(1),
     supabase.from('ranking').select('*').eq('category', 'Varones').eq('season', 2025).order('position').limit(3),
     supabase.from('ranking').select('*').eq('category', 'Damas').eq('season', 2025).order('position').limit(3),
