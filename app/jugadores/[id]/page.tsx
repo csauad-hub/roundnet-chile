@@ -1,15 +1,17 @@
 import { unstable_noStore as noStore } from 'next/cache'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, MapPin, Instagram, MessageCircle } from 'lucide-react'
+import { ArrowLeft, MapPin, Instagram, MessageCircle, Trophy } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import BottomNav from '@/components/layout/BottomNav'
 
 function whatsappUrl(phone: string): string {
-  // Strip everything except digits, then build wa.me link
   const digits = phone.replace(/\D/g, '')
   return `https://wa.me/${digits}`
 }
+
+const medalEmoji = (pos: number) =>
+  pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `#${pos}`
 
 export default async function PlayerDetailPage({
   params,
@@ -20,12 +22,19 @@ export default async function PlayerDetailPage({
   const { id } = await params
   const supabase = createAdminClient()
 
-  const { data: player } = await supabase
-    .from('profiles')
-    .select('id, full_name, avatar_url, city, region, instagram, phone, visible_in_directory')
-    .eq('id', id)
-    .eq('visible_in_directory', true)
-    .single()
+  const [{ data: player }, { data: rankingEntries }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url, city, region, instagram, phone, visible_in_directory')
+      .eq('id', id)
+      .eq('visible_in_directory', true)
+      .single(),
+    supabase
+      .from('ranking')
+      .select('position, points, category, season')
+      .eq('profile_id', id)
+      .order('season', { ascending: false }),
+  ])
 
   if (!player) notFound()
 
@@ -70,7 +79,39 @@ export default async function PlayerDetailPage({
           )}
         </div>
 
-        {/* Contact buttons */}
+        {/* Ranking */}
+        {rankingEntries && rankingEntries.length > 0 && (
+          <section className="px-4 mt-5">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Ranking</p>
+            <div className="card overflow-hidden">
+              {rankingEntries.map((r, i) => (
+                <div
+                  key={i}
+                  className={`flex items-center gap-3 px-4 py-3 ${
+                    i < rankingEntries.length - 1 ? 'border-b border-slate-100' : ''
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <Trophy size={16} className="text-blue-500" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-slate-400">{r.category} · Temporada {r.season}</p>
+                    <p className="text-sm font-bold text-slate-800">
+                      {medalEmoji(r.position)} Posición {r.position}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-blue-600">
+                    {Number(r.points) % 1 === 0
+                      ? Number(r.points).toLocaleString('es-CL')
+                      : Number(r.points).toFixed(1)} pts
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Contacto */}
         {(igHandle || player.phone) && (
           <section className="px-4 mt-5">
             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Contacto</p>
@@ -114,8 +155,7 @@ export default async function PlayerDetailPage({
           </section>
         )}
 
-        {/* No contact info */}
-        {!igHandle && !player.phone && (
+        {!igHandle && !player.phone && (!rankingEntries || rankingEntries.length === 0) && (
           <section className="px-4 mt-5">
             <div className="card p-6 text-center">
               <p className="text-sm text-slate-400">Este jugador no ha compartido información de contacto.</p>

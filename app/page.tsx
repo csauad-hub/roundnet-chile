@@ -13,8 +13,8 @@ export default async function HomePage() {
   const [{ data: news }, { data: torneoData }, { data: varones }, { data: damas }] = await Promise.all([
     supabase.from('news').select('*').order('published_at', { ascending: false, nullsFirst: false }).limit(3),
     supabase.from('tournaments').select('*').in('status', ['upcoming', 'ongoing']).order('date').limit(1),
-    supabase.from('ranking').select('*').eq('category', 'Varones').eq('season', 2025).order('position').limit(3),
-    supabase.from('ranking').select('*').eq('category', 'Damas').eq('season', 2025).order('position').limit(3),
+    supabase.from('ranking').select('*, profiles(id, full_name, avatar_url)').eq('category', 'Varones').eq('season', 2025).order('position').limit(3),
+    supabase.from('ranking').select('*, profiles(id, full_name, avatar_url)').eq('category', 'Damas').eq('season', 2025).order('position').limit(3),
   ])
 
   const torneo = torneoData?.[0] ?? null
@@ -111,7 +111,18 @@ export default async function HomePage() {
                 varones.map((p, i) => (
                   <div key={p.id} className={`flex items-center py-2 ${i < varones.length - 1 ? 'border-b border-slate-100' : ''}`}>
                     <span className="w-7 text-base">{medal(p.position)}</span>
-                    <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{p.name}</span>
+                    {p.profiles?.avatar_url ? (
+                      <img src={p.profiles.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover mr-2 flex-shrink-0" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 mr-2 flex-shrink-0">
+                        {p.name[0]}
+                      </div>
+                    )}
+                    {p.profiles?.id ? (
+                      <Link href={`/jugadores/${p.profiles.id}`} className="flex-1 text-sm font-semibold text-slate-800 truncate hover:text-blue-600 transition-colors">{p.name}</Link>
+                    ) : (
+                      <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{p.name}</span>
+                    )}
                     <span className="text-sm font-bold text-blue-600">
                       {Number(p.points) % 1 === 0
                         ? Number(p.points).toLocaleString('es-CL')
@@ -130,7 +141,18 @@ export default async function HomePage() {
                 damas.map((p, i) => (
                   <div key={p.id} className={`flex items-center py-2 ${i < damas.length - 1 ? 'border-b border-slate-100' : ''}`}>
                     <span className="w-7 text-base">{medal(p.position)}</span>
-                    <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{p.name}</span>
+                    {p.profiles?.avatar_url ? (
+                      <img src={p.profiles.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover mr-2 flex-shrink-0" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 mr-2 flex-shrink-0">
+                        {p.name[0]}
+                      </div>
+                    )}
+                    {p.profiles?.id ? (
+                      <Link href={`/jugadores/${p.profiles.id}`} className="flex-1 text-sm font-semibold text-slate-800 truncate hover:text-pink-500 transition-colors">{p.name}</Link>
+                    ) : (
+                      <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{p.name}</span>
+                    )}
                     <span className="text-sm font-bold text-pink-500">
                       {Number(p.points) % 1 === 0
                         ? Number(p.points).toLocaleString('es-CL')

@@ -131,12 +131,13 @@ create policy "news_admin_all"  on public.news for all
 
 -- ── ranking ──────────────────────────────────────────────────
 create table if not exists public.ranking (
-  id       uuid primary key default gen_random_uuid(),
-  position integer,
-  name     text not null,
-  points   numeric,
-  season   integer default 2025,
-  category text,
+  id         uuid primary key default gen_random_uuid(),
+  position   integer,
+  name       text not null,
+  points     numeric,
+  season     integer default 2025,
+  category   text,
+  profile_id uuid references public.profiles(id) on delete set null,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

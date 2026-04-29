@@ -2,7 +2,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { LayoutDashboard, Trophy, Users, Newspaper, LogOut, Home, MessageSquare } from 'lucide-react'
+import { LayoutDashboard, Trophy, Users, Newspaper, LogOut, Home, MessageSquare, TrendingUp } from 'lucide-react'
 import { createAdminClient as createAdmin } from '@/lib/supabase/admin'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -63,6 +63,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </Link>
           <Link href="/admin/usuarios" className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm transition-colors">
             <Users className="w-4 h-4 shrink-0" /> Usuarios
+          </Link>
+          <Link href="/admin/ranking" className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm transition-colors">
+            <TrendingUp className="w-4 h-4 shrink-0" /> Ranking
           </Link>
           <Link href="/admin/noticias" className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-sm transition-colors">
             <Newspaper className="w-4 h-4 shrink-0" /> Noticias
