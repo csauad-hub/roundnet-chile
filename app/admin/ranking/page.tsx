@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Pencil, Trash2, X, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, RefreshCw, AlertCircle } from 'lucide-react'
 
 type Profile = { id: string; full_name: string | null; avatar_url: string | null }
 type RankingEntry = {
@@ -39,6 +39,8 @@ export default function AdminRankingPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [recalculating, setRecalculating] = useState(false)
+  const [recalcMsg, setRecalcMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
 
   const fetchEntries = useCallback(async () => {
     setLoading(true)
@@ -61,6 +63,24 @@ export default function AdminRankingPage() {
   }, [supabase])
 
   useEffect(() => { fetchEntries() }, [fetchEntries])
+
+  async function handleRecalculate() {
+    setRecalculating(true)
+    setRecalcMsg(null)
+    const res = await fetch('/api/admin/ranking/recalcular', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ season }),
+    })
+    const json = await res.json()
+    if (res.ok) {
+      setRecalcMsg({ type: 'ok', text: `Ranking ${season} recalculado exitosamente desde resultados de torneos.` })
+      await fetchEntries()
+    } else {
+      setRecalcMsg({ type: 'error', text: json.error ?? 'Error al recalcular' })
+    }
+    setRecalculating(false)
+  }
 
   function openNew() {
     setEditId(null)
@@ -112,7 +132,7 @@ export default function AdminRankingPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Ranking</h1>
-          <p className="text-gray-400 mt-1">Gestiona el ranking por categoría y temporada</p>
+          <p className="text-gray-400 mt-1">Gestiona y recalcula el ranking por temporada</p>
         </div>
         <button
           onClick={openNew}
@@ -120,6 +140,32 @@ export default function AdminRankingPage() {
         >
           <Plus size={16} /> Nueva entrada
         </button>
+      </div>
+
+      {/* Recalcular desde torneos */}
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-white">Recalcular desde resultados de torneos</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Suma los puntos de todos los torneos de la temporada {season} y actualiza el ranking automáticamente.
+            </p>
+            {recalcMsg && (
+              <div className={`flex items-center gap-1.5 mt-2 text-xs ${recalcMsg.type === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>
+                {recalcMsg.type === 'ok' ? <Check size={13} /> : <AlertCircle size={13} />}
+                {recalcMsg.text}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={handleRecalculate}
+            disabled={recalculating}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20 text-sm font-medium transition-colors disabled:opacity-50 flex-shrink-0"
+          >
+            <RefreshCw size={14} className={recalculating ? 'animate-spin' : ''} />
+            {recalculating ? 'Calculando...' : 'Recalcular'}
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -155,7 +201,7 @@ export default function AdminRankingPage() {
         <div className="text-center py-16 text-gray-500">
           <p>No hay entradas de ranking para esta categoría/temporada.</p>
           <button onClick={openNew} className="mt-3 text-[#00E5FF] text-sm hover:underline">
-            Agregar la primera →
+            Agregar manualmente →
           </button>
         </div>
       ) : (
@@ -166,7 +212,7 @@ export default function AdminRankingPage() {
                 <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Pos</th>
                 <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Jugador</th>
                 <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Puntos</th>
-                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Vinculado</th>
+                <th className="text-left text-xs font-medium text-gray-400 uppercase tracking-wider px-6 py-3">Perfil</th>
                 <th className="px-6 py-3" />
               </tr>
             </thead>
@@ -180,7 +226,7 @@ export default function AdminRankingPage() {
                   <td className="px-6 py-4 text-[#00E5FF] font-bold text-sm">{entry.points}</td>
                   <td className="px-6 py-4">
                     {entry.profiles ? (
-                      <span className="flex items-center gap-2 text-green-400 text-xs">
+                      <span className="flex items-center gap-2 text-emerald-400 text-xs">
                         {entry.profiles.avatar_url && (
                           <img src={entry.profiles.avatar_url} alt="" className="w-5 h-5 rounded-full object-cover" />
                         )}
@@ -220,7 +266,7 @@ export default function AdminRankingPage() {
           <div className="bg-gray-900 border border-white/10 rounded-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-white font-bold text-lg">
-                {editId ? 'Editar entrada' : 'Nueva entrada'}
+                {editId ? 'Editar entrada' : 'Nueva entrada manual'}
               </h2>
               <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-white">
                 <X size={20} />
@@ -251,7 +297,7 @@ export default function AdminRankingPage() {
             </div>
 
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Nombre (visible en ranking)</label>
+              <label className="text-xs text-gray-400 mb-1 block">Nombre visible en ranking</label>
               <input
                 type="text"
                 value={form.name}
@@ -286,7 +332,7 @@ export default function AdminRankingPage() {
 
             <div>
               <label className="text-xs text-gray-400 mb-1 block">
-                Vincular con usuario de la app <span className="text-gray-600">(opcional)</span>
+                Vincular con usuario <span className="text-gray-600">(opcional)</span>
               </label>
               <select
                 value={form.profile_id}
@@ -295,9 +341,7 @@ export default function AdminRankingPage() {
               >
                 <option value="">— Sin vincular —</option>
                 {profiles.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.full_name ?? p.id}
-                  </option>
+                  <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
                 ))}
               </select>
             </div>

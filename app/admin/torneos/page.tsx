@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Settings2 } from 'lucide-react'
 
 type Tournament = { id: string; name: string; city: string; date: string; status: string }
 
@@ -87,6 +87,11 @@ export default function AdminTorneos() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1 justify-end">
+                      <Link href={`/admin/torneos/${t.id}`}
+                        className="p-1.5 text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
+                        title="Gestionar inscripciones y resultados">
+                        <Settings2 size={15} />
+                      </Link>
                       <Link href={`/admin/torneos/editar/${t.id}`}
                         className="p-1.5 text-gray-400 hover:text-[#00E5FF] hover:bg-[#00E5FF]/10 rounded-lg transition-colors">
                         <Pencil size={15} />
