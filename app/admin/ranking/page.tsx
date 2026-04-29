@@ -19,11 +19,9 @@ type RankingEntry = {
 const SEASONS = [2026, 2025, 2024, 2023]
 
 const emptyForm = {
-  position: '',
   name: '',
   points: '',
   season: '2026',
-  category: 'General',
   profile_id: '',
 }
 
@@ -37,6 +35,7 @@ export default function AdminRankingPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [recalculating, setRecalculating] = useState(false)
   const [recalcMsg, setRecalcMsg] = useState<{ type: 'ok' | 'error'; text: string } | null>(null)
 
@@ -81,18 +80,18 @@ export default function AdminRankingPage() {
 
   function openNew() {
     setEditId(null)
+    setSaveError(null)
     setForm({ ...emptyForm, season: String(season) })
     setShowForm(true)
   }
 
   function openEdit(entry: RankingEntry) {
     setEditId(entry.id)
+    setSaveError(null)
     setForm({
-      position: String(entry.position),
       name: entry.name,
       points: String(entry.points),
       season: String(entry.season),
-      category: entry.category,
       profile_id: entry.profile_id ?? '',
     })
     setShowForm(true)
@@ -100,28 +99,38 @@ export default function AdminRankingPage() {
 
   async function handleSave() {
     setSaving(true)
-    const payload = {
-      position: Number(form.position),
+    setSaveError(null)
+    const body = {
+      id: editId ?? undefined,
       name: form.name.trim(),
       points: Number(form.points),
       season: Number(form.season),
-      category: form.category,
       profile_id: form.profile_id || null,
     }
-    if (editId) {
-      await supabase.from('ranking').update(payload).eq('id', editId)
-    } else {
-      await supabase.from('ranking').insert(payload)
+    const res = await fetch('/api/admin/ranking/entry', {
+      method: editId ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      setSaveError(json.error ?? 'Error al guardar')
+      setSaving(false)
+      return
     }
     setSaving(false)
     setShowForm(false)
     await fetchEntries()
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(id: string, entrySeason: number) {
     if (!confirm('¿Eliminar esta entrada del ranking?')) return
-    await supabase.from('ranking').delete().eq('id', id)
-    await fetchEntries()
+    const res = await fetch('/api/admin/ranking/entry', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, season: entrySeason }),
+    })
+    if (res.ok) await fetchEntries()
   }
 
   return (
@@ -183,7 +192,7 @@ export default function AdminRankingPage() {
         </div>
       ) : entries.length === 0 ? (
         <div className="text-center py-16 text-gray-500">
-          <p>No hay entradas de ranking para esta categoría/temporada.</p>
+          <p>No hay entradas de ranking para esta temporada.</p>
           <button onClick={openNew} className="mt-3 text-[#00E5FF] text-sm hover:underline">
             Agregar manualmente →
           </button>
@@ -201,9 +210,9 @@ export default function AdminRankingPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {entries.map(entry => (
+              {entries.map((entry, idx) => (
                 <tr key={entry.id} className="hover:bg-white/5 transition-colors">
-                  <td className="px-6 py-4 text-white font-bold text-sm">{entry.position}</td>
+                  <td className="px-6 py-4 text-white font-bold text-sm">{idx + 1}</td>
                   <td className="px-6 py-4">
                     <p className="text-white font-medium text-sm">{entry.name}</p>
                   </td>
@@ -230,7 +239,7 @@ export default function AdminRankingPage() {
                         <Pencil size={15} />
                       </button>
                       <button
-                        onClick={() => handleDelete(entry.id)}
+                        onClick={() => handleDelete(entry.id, entry.season)}
                         className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                       >
                         <Trash2 size={15} />
@@ -257,29 +266,6 @@ export default function AdminRankingPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Posición</label>
-                <input
-                  type="number"
-                  value={form.position}
-                  onChange={e => setForm(f => ({ ...f, position: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-lg px-3 py-2"
-                  placeholder="1"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Puntos</label>
-                <input
-                  type="number"
-                  value={form.points}
-                  onChange={e => setForm(f => ({ ...f, points: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-lg px-3 py-2"
-                  placeholder="1000"
-                />
-              </div>
-            </div>
-
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Nombre visible en ranking</label>
               <input
@@ -289,6 +275,18 @@ export default function AdminRankingPage() {
                 className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-lg px-3 py-2"
                 placeholder="Nombre del jugador"
               />
+            </div>
+
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Puntos</label>
+              <input
+                type="number"
+                value={form.points}
+                onChange={e => setForm(f => ({ ...f, points: e.target.value }))}
+                className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-lg px-3 py-2"
+                placeholder="1000"
+              />
+              <p className="text-xs text-gray-500 mt-1">La posición se calculará automáticamente por puntos.</p>
             </div>
 
             <div>
@@ -318,6 +316,13 @@ export default function AdminRankingPage() {
               </select>
             </div>
 
+            {saveError && (
+              <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/20 px-3 py-2 rounded-lg">
+                <AlertCircle size={13} />
+                {saveError}
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setShowForm(false)}
@@ -327,7 +332,7 @@ export default function AdminRankingPage() {
               </button>
               <button
                 onClick={handleSave}
-                disabled={saving || !form.name || !form.position || !form.points}
+                disabled={saving || !form.name || !form.points}
                 className="flex-1 px-4 py-2 rounded-lg bg-[#00E5FF] text-black text-sm font-semibold hover:bg-[#00E5FF]/90 transition-colors disabled:opacity-50"
               >
                 {saving ? 'Guardando...' : 'Guardar'}
