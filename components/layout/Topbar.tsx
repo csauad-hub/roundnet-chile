@@ -77,7 +77,7 @@ export default function Topbar({ title }: { title?: string }) {
                       <Link href="/admin/torneos/nuevo" onClick={() => setShowCreateMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 font-medium">
                         <Trophy size={15} className="text-blue-500" /> Torneo
                       </Link>
-                      <Link href="/admin/noticias/nueva" onClick={() => setShowCreateMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 font-medium">
+                      <Link href="/admin/noticias/nuevo" onClick={() => setShowCreateMenu(false)} className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 font-medium">
                         <Newspaper size={15} className="text-blue-500" /> Noticia
                       </Link>
                     </div>
