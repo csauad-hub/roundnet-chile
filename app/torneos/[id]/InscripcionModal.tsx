@@ -27,6 +27,8 @@ export default function InscripcionModal({ tournamentId, tournamentName, tournam
   const [selectedPartner, setSelectedPartner] = useState<Profile | null>(null)
   const [searching, setSearching] = useState(false)
 
+  const isMultiple = tournamentCategory === 'Múltiple'
+  const [category, setCategory] = useState<'Varones' | 'Damas'>('Varones')
   const [teamName, setTeamName] = useState('')
   const [notes, setNotes] = useState('')
 
@@ -87,6 +89,7 @@ export default function InscripcionModal({ tournamentId, tournamentName, tournam
     setPartnerQuery('')
     setPartnerResults([])
     setSelectedPartner(null)
+    setCategory('Varones')
     setTeamName('')
     setNotes('')
     setProofFile(null)
@@ -118,7 +121,7 @@ export default function InscripcionModal({ tournamentId, tournamentName, tournam
         body: JSON.stringify({
           tournament_id: tournamentId,
           player2_id: selectedPartner.id,
-          category: tournamentCategory ?? 'Open',
+          category: isMultiple ? category : (tournamentCategory ?? 'Open'),
           team_name: teamName.trim() || null,
           payment_proof: path,
           notes: notes || null,
@@ -165,7 +168,7 @@ export default function InscripcionModal({ tournamentId, tournamentName, tournam
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-5">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-5">
 
               {step === 'success' ? (
                 <div className="flex flex-col items-center text-center py-6 gap-4">
@@ -294,22 +297,39 @@ export default function InscripcionModal({ tournamentId, tournamentName, tournam
                     />
                   </section>
 
-                  {/* Categoría - solo se muestra si el torneo no tiene categoría definida */}
-                  {tournamentCategory && (
-                    <section>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Categoría</p>
+                  {/* Categoría */}
+                  <section>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Categoría</p>
+                    {isMultiple ? (
+                      <div className="flex gap-2">
+                        {(['Varones', 'Damas'] as const).map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setCategory(cat)}
+                            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
+                              category === cat
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300'
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
                       <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-3">
                         <span className={`text-sm font-semibold ${
                           tournamentCategory === 'Damas' ? 'text-pink-600' :
                           tournamentCategory === 'Open' ? 'text-purple-600' :
                           'text-blue-600'
                         }`}>
-                          {tournamentCategory}
+                          {tournamentCategory ?? 'Open'}
                         </span>
                         <span className="text-xs text-slate-400">· definido por el torneo</span>
                       </div>
-                    </section>
-                  )}
+                    )}
+                  </section>
 
                   {/* Comprobante de pago */}
                   <section>

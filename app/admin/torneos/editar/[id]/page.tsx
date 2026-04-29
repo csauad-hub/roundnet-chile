@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-const CATEGORIAS = ['Varones', 'Damas', 'Open']
+const CATEGORIAS = ['Varones', 'Damas', 'Open', 'Múltiple']
 const ESTADOS = [
   { value: 'upcoming', label: 'Próximo' },
   { value: 'ongoing', label: 'En curso' },
