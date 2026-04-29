@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import Topbar from '@/components/layout/Topbar'
 import BottomNav from '@/components/layout/BottomNav'
+import SeasonSelector from './SeasonSelector'
 
 type Profile = { id: string; full_name: string | null; avatar_url: string | null }
 type RankingEntry = {
@@ -18,17 +19,17 @@ type RankingEntry = {
 export default async function RankingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ categoria?: string }>
+  searchParams: Promise<{ season?: string }>
 }) {
-  const { categoria = 'Varones' } = await searchParams
+  const { season: seasonParam } = await searchParams
+  const season = Number(seasonParam ?? 2026)
 
   const supabase = await createClient()
   const { data: players } = await supabase
     .from('ranking')
     .select('*, profiles(id, full_name, avatar_url)')
-    .eq('season', 2025)
-    .eq('category', categoria)
-    .order('position')
+    .eq('season', season)
+    .order('points', { ascending: false })
 
   const entries = (players ?? []) as RankingEntry[]
 
@@ -36,31 +37,18 @@ export default async function RankingPage({
     <div className="flex flex-col min-h-screen animate-in">
       <Topbar />
       <main className="flex-1 pb-24">
-        <div className="px-4 pt-4">
-          <h1 className="font-display font-black text-2xl text-slate-900">Ranking 2025</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Temporada oficial</p>
-        </div>
-
-        <div className="flex gap-2 px-4 mt-4">
-          {(['Varones', 'Damas'] as const).map(cat => (
-            <Link
-              key={cat}
-              href={`/ranking?categoria=${cat}`}
-              className={`flex-1 text-center py-2 rounded-xl text-sm font-semibold transition-colors ${
-                categoria === cat
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {cat}
-            </Link>
-          ))}
+        <div className="flex items-center justify-between px-4 pt-4">
+          <div>
+            <h1 className="font-display font-black text-2xl text-slate-900">Ranking {season}</h1>
+            <p className="text-sm text-slate-500 mt-0.5">Temporada oficial</p>
+          </div>
+          <SeasonSelector season={season} />
         </div>
 
         <div className="px-4 mt-4">
           {entries.length === 0 ? (
             <div className="card px-4 py-8 text-center text-slate-400 text-sm">
-              No hay datos de ranking aún.
+              No hay datos de ranking para {season}.
             </div>
           ) : (
             <div className="card overflow-hidden">
@@ -89,20 +77,22 @@ export default async function RankingPage({
                   </>
                 )
 
+                const pos = idx + 1
+
                 return (
                   <div
                     key={player.id}
                     className={`flex items-center px-4 py-3 ${idx < entries.length - 1 ? 'border-b border-slate-100' : ''}`}
                   >
                     <div className="w-8 flex-shrink-0">
-                      {player.position === 1 ? (
+                      {pos === 1 ? (
                         <span className="text-lg">🥇</span>
-                      ) : player.position === 2 ? (
+                      ) : pos === 2 ? (
                         <span className="text-lg">🥈</span>
-                      ) : player.position === 3 ? (
+                      ) : pos === 3 ? (
                         <span className="text-lg">🥉</span>
                       ) : (
-                        <span className="text-sm font-bold text-slate-400">{player.position}</span>
+                        <span className="text-sm font-bold text-slate-400">{pos}</span>
                       )}
                     </div>
 

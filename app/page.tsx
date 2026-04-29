@@ -10,11 +10,10 @@ import { createClient } from '@/lib/supabase/server'
 export default async function HomePage() {
   const supabase = await createClient()
 
-  const [{ data: news }, { data: torneoData }, { data: varones }, { data: damas }] = await Promise.all([
+  const [{ data: news }, { data: torneoData }, { data: rankingData }] = await Promise.all([
     supabase.from('news').select('*').order('published_at', { ascending: false, nullsFirst: false }).limit(3),
     supabase.from('tournaments').select('*').in('status', ['upcoming', 'ongoing']).order('date').limit(1),
-    supabase.from('ranking').select('*, profiles(id, full_name, avatar_url)').eq('category', 'Varones').eq('season', 2025).order('position').limit(3),
-    supabase.from('ranking').select('*, profiles(id, full_name, avatar_url)').eq('category', 'Damas').eq('season', 2025).order('position').limit(3),
+    supabase.from('ranking').select('*, profiles(id, full_name, avatar_url)').eq('season', 2026).order('points', { ascending: false }).limit(5),
   ])
 
   const torneo = torneoData?.[0] ?? null
@@ -97,18 +96,17 @@ export default async function HomePage() {
         {/* Ranking */}
         <div className="mt-5 px-4">
           <div className="flex items-center justify-between mb-2.5">
-            <h2 className="section-title">Ranking 2025</h2>
+            <h2 className="section-title">Ranking 2026</h2>
             <Link href="/ranking" className="text-xs font-semibold text-blue-600 flex items-center gap-0.5">Ver todo <ChevronRight size={14} /></Link>
           </div>
           <div className="card overflow-hidden">
-            <div className="px-4 pt-3 pb-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-2">Varones</p>
-              {!varones || varones.length === 0 ? (
-                <p className="text-xs text-slate-400 py-1">Sin datos</p>
+            <div className="px-4 py-3">
+              {!rankingData || rankingData.length === 0 ? (
+                <p className="text-xs text-slate-400 py-1">Sin datos de ranking aún.</p>
               ) : (
-                varones.map((p, i) => (
-                  <div key={p.id} className={`flex items-center py-2 ${i < varones.length - 1 ? 'border-b border-slate-100' : ''}`}>
-                    <span className="w-7 text-base">{medal(p.position)}</span>
+                rankingData.map((p, i) => (
+                  <div key={p.id} className={`flex items-center py-2 ${i < rankingData.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                    <span className="w-7 text-base">{medal(i + 1)}</span>
                     {p.profiles?.avatar_url ? (
                       <img src={p.profiles.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover mr-2 flex-shrink-0" />
                     ) : (
@@ -122,36 +120,6 @@ export default async function HomePage() {
                       <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{p.name}</span>
                     )}
                     <span className="text-sm font-bold text-blue-600">
-                      {Number(p.points) % 1 === 0
-                        ? Number(p.points).toLocaleString('es-CL')
-                        : Number(p.points).toFixed(1)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="border-t border-slate-100 mx-4" />
-            <div className="px-4 pt-3 pb-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-pink-500 mb-2">Damas</p>
-              {!damas || damas.length === 0 ? (
-                <p className="text-xs text-slate-400 py-1">Sin datos</p>
-              ) : (
-                damas.map((p, i) => (
-                  <div key={p.id} className={`flex items-center py-2 ${i < damas.length - 1 ? 'border-b border-slate-100' : ''}`}>
-                    <span className="w-7 text-base">{medal(p.position)}</span>
-                    {p.profiles?.avatar_url ? (
-                      <img src={p.profiles.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover mr-2 flex-shrink-0" />
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500 mr-2 flex-shrink-0">
-                        {p.name[0]}
-                      </div>
-                    )}
-                    {p.profiles?.id ? (
-                      <Link href={`/jugadores/${p.profiles.id}`} className="flex-1 text-sm font-semibold text-slate-800 truncate hover:text-pink-500 transition-colors">{p.name}</Link>
-                    ) : (
-                      <span className="flex-1 text-sm font-semibold text-slate-800 truncate">{p.name}</span>
-                    )}
-                    <span className="text-sm font-bold text-pink-500">
                       {Number(p.points) % 1 === 0
                         ? Number(p.points).toLocaleString('es-CL')
                         : Number(p.points).toFixed(1)}

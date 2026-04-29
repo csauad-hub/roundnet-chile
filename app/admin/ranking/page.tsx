@@ -16,15 +16,14 @@ type RankingEntry = {
   profiles: Profile | null
 }
 
-const CATEGORIES = ['Varones', 'Damas'] as const
-const SEASONS = [2025, 2024, 2023]
+const SEASONS = [2026, 2025, 2024, 2023]
 
 const emptyForm = {
   position: '',
   name: '',
   points: '',
-  season: '2025',
-  category: 'Varones',
+  season: '2026',
+  category: 'General',
   profile_id: '',
 }
 
@@ -33,8 +32,7 @@ export default function AdminRankingPage() {
   const [entries, setEntries] = useState<RankingEntry[]>([])
   const [profiles, setProfiles] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
-  const [categoria, setCategoria] = useState<'Varones' | 'Damas'>('Varones')
-  const [season, setSeason] = useState(2025)
+  const [season, setSeason] = useState(2026)
   const [form, setForm] = useState(emptyForm)
   const [editId, setEditId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -48,11 +46,10 @@ export default function AdminRankingPage() {
       .from('ranking')
       .select('*, profiles(id, full_name, avatar_url)')
       .eq('season', season)
-      .eq('category', categoria)
-      .order('position')
+      .order('points', { ascending: false })
     setEntries((data as RankingEntry[]) ?? [])
     setLoading(false)
-  }, [categoria, season, supabase])
+  }, [season, supabase])
 
   useEffect(() => {
     supabase
@@ -84,7 +81,7 @@ export default function AdminRankingPage() {
 
   function openNew() {
     setEditId(null)
-    setForm({ ...emptyForm, category: categoria, season: String(season) })
+    setForm({ ...emptyForm, season: String(season) })
     setShowForm(true)
   }
 
@@ -168,21 +165,8 @@ export default function AdminRankingPage() {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtro temporada */}
       <div className="flex gap-3 mb-5">
-        <div className="flex gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
-          {CATEGORIES.map(c => (
-            <button
-              key={c}
-              onClick={() => setCategoria(c)}
-              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                categoria === c ? 'bg-[#00E5FF] text-black' : 'text-gray-400 hover:text-white'
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
         <select
           value={season}
           onChange={e => setSeason(Number(e.target.value))}
@@ -307,27 +291,15 @@ export default function AdminRankingPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Categoría</label>
-                <select
-                  value={form.category}
-                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                  className="w-full bg-gray-800 border border-white/10 text-white text-sm rounded-lg px-3 py-2"
-                >
-                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1 block">Temporada</label>
-                <select
-                  value={form.season}
-                  onChange={e => setForm(f => ({ ...f, season: e.target.value }))}
-                  className="w-full bg-gray-800 border border-white/10 text-white text-sm rounded-lg px-3 py-2"
-                >
-                  {SEASONS.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Temporada</label>
+              <select
+                value={form.season}
+                onChange={e => setForm(f => ({ ...f, season: e.target.value }))}
+                className="w-full bg-gray-800 border border-white/10 text-white text-sm rounded-lg px-3 py-2"
+              >
+                {SEASONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
 
             <div>
